@@ -23,7 +23,7 @@ namespace _123_InheritCustomAttr.Test {
 		[Trait("Protection", "rename")]
 		[Trait("Issue", "https://github.com/mkaring/ConfuserEx/issues/123")]
 		[Trait("Issue", "https://github.com/mkaring/ConfuserEx/issues/161")]
-		public async Task InheritCustomAttribute(string renameMode) {
+		public async Task InheritCustomAttribute(string renameMode, bool flatten) {
 			var baseDir = Environment.CurrentDirectory;
 			var outputDir = Path.Combine(baseDir, "testtmp_" + Guid.NewGuid().ToString());
 			var inputFile = Path.Combine(baseDir, "123_InheritCustomAttr.exe");
@@ -36,7 +36,8 @@ namespace _123_InheritCustomAttr.Test {
 			proj.Add(new ProjectModule() { Path = inputFile });
 			proj.Rules.Add(new Rule() {
 				new SettingItem<Protection>("rename") {
-					{ "mode", renameMode }
+					{ "mode", renameMode },
+					{ "flatten", flatten ? "True" : "False" }
 				}
 			});
 
@@ -71,7 +72,8 @@ namespace _123_InheritCustomAttr.Test {
 
 		public static IEnumerable<object[]> InheritCustomAttributeData() {
 			foreach (var renameMode in new string[] { nameof(RenameMode.Unicode), nameof(RenameMode.ASCII), nameof(RenameMode.Letters), nameof(RenameMode.Debug) })
-				yield return new object[] { renameMode };
+				foreach (var flatten in new bool[] { true, false })
+					yield return new object[] { renameMode, flatten };
 		}
 	}
 }
