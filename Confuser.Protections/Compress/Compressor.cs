@@ -62,6 +62,13 @@ namespace Confuser.Protections {
 				var assembly = new AssemblyDefUser(originModule.Assembly);
 				assembly.Name += ".cr";
 				assembly.Modules.Add(stubModule);
+				var targetFramework = originModule.Assembly.CustomAttributes.FirstOrDefault(ca => ca.TypeFullName == "System.Runtime.Versioning.TargetFrameworkAttribute");
+				if (targetFramework != null) {
+					var attrType = stubModule.CorLibTypes.GetTypeRef("System.Runtime.Versioning", "TargetFrameworkAttribute");
+					var ctorSig = MethodSig.CreateInstance(stubModule.CorLibTypes.Void, stubModule.CorLibTypes.String);
+					assembly.CustomAttributes.Add(new CustomAttribute(
+						new MemberRefUser(stubModule, ".ctor", ctorSig, attrType), new CAArgument[] { new CAArgument(stubModule.CorLibTypes.String, targetFramework.ConstructorArguments[0].Value) }));
+				}
 			}
 			else {
 				ctx.Assembly.Modules.Insert(0, stubModule);
