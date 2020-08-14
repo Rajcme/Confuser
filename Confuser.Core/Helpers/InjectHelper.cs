@@ -208,6 +208,19 @@ namespace Confuser.Core.Helpers {
 		}
 
 		/// <summary>
+		/// Imports a <see cref="MethodBase"/> as a <see cref="IMethod"/>. This will be either
+		/// a <see cref="MemberRef"/> or a <see cref="MethodSpec"/>.
+		/// </summary>
+		/// <param name="source">The source module.</param>
+		/// <param name="methodBase">The method</param>
+		/// <returns>The imported method or <c>null</c> if <paramref name="methodBase"/> is invalid
+		/// or if we failed to import the method</returns>
+		public static IMethod Import(ModuleDef target, MethodBase methodBase) {
+			var ctx = new InjectContext(null, target);
+			return ctx.Importer.Import(methodBase);
+		}
+
+		/// <summary>
 		///     Injects the specified MethodDef to another module.
 		/// </summary>
 		/// <param name="methodDef">The source MethodDef.</param>
@@ -242,7 +255,7 @@ namespace Confuser.Core.Helpers {
 			/// <summary>
 			///     The mapping of origin definitions to injected definitions.
 			/// </summary>
-			public readonly Dictionary<IMemberRef, IMemberRef> MemberMap = new Dictionary<IMemberRef, IMemberRef>();
+			public readonly Dictionary<object, IMemberRef> MemberMap = new Dictionary<object, IMemberRef>();
 
 			/// <summary>
 			///     The module which source type originated from.
@@ -294,7 +307,7 @@ namespace Confuser.Core.Helpers {
 				//HACK: for netcore
 				//System.Enviroment and System.AppDomain is in System.Runtime.Extensions/mscorlib/netstandard
 				//System.Runtime.InteropServices.Marshal is in System.Runtime.InteropServices/mscorlib/netstandard
-				if (source.IsTypeRef && OriginModule.CorLibTypes.AssemblyRef != TargetModule.CorLibTypes.AssemblyRef) {
+				if (source.IsTypeRef && OriginModule?.CorLibTypes.AssemblyRef != TargetModule.CorLibTypes.AssemblyRef) {
 					var sourceRef = (TypeRef)source;
 					TypeRef destRef = TryResolveType(sourceRef, TargetModule.CorLibTypes.AssemblyRef, false) ??
 						TryResolveType(sourceRef, netstandardRef, true) ??
@@ -375,6 +388,39 @@ namespace Confuser.Core.Helpers {
 			public override IField Map(FieldDef source) {
 				if (MemberMap.ContainsKey(source))
 					return (FieldDef)MemberMap[source];
+				return null;
+			}
+
+			public override TypeRef Map(Type source) {
+				if (MemberMap.TryGetValue(source, out var result))
+					return (TypeRef)result;
+
+				if (OriginModule?.CorLibTypes.AssemblyRef != TargetModule.CorLibTypes.AssemblyRef) {
+					var sourceRef = (TypeRef)TargetModule.Import(source);
+					TypeRef destRef = TryResolveType(sourceRef, TargetModule.CorLibTypes.AssemblyRef, false) ??
+						TryResolveType(sourceRef, netstandardRef, true) ??
+						TryResolveType(sourceRef, mscorlibRef, true) ??
+						TryResolveType(sourceRef, TryResolveAssembly(sourceRef.DefinitionAssembly.Name), false) ??
+						TryResolveType(sourceRef, corelibRef, false);
+
+					if (destRef != null) {
+						var stack = new Stack<IMDTokenProvider>(2);
+						stack.Push(destRef);
+						TypeRef cur = destRef;
+						do {
+							var scope = cur.ResolutionScope;
+							stack.Push(scope);
+							cur = scope as TypeRef;
+						} while (cur != null);
+						do {
+							TargetModule.UpdateRowId(stack.Pop());
+						} while (stack.Count > 0);
+
+						MemberMap[source] = destRef;
+						return destRef;
+					}
+				}
+
 				return null;
 			}
 		}

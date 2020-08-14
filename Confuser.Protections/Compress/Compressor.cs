@@ -197,7 +197,7 @@ namespace Confuser.Protections {
 				repl.AddRange(arg);
 				repl.Add(Instruction.Create(OpCodes.Dup));
 				repl.Add(Instruction.Create(OpCodes.Ldtoken, dataField));
-				repl.Add(Instruction.Create(OpCodes.Call, stubModule.Import(
+				repl.Add(Instruction.Create(OpCodes.Call, InjectHelper.Import(stubModule,
 					typeof(RuntimeHelpers).GetMethod("InitializeArray"))));
 				return repl.ToArray();
 			});
