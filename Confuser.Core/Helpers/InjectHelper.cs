@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
@@ -258,6 +259,10 @@ namespace Confuser.Core.Helpers {
 			/// </summary>
 			readonly Importer importer;
 
+			private readonly AssemblyRef netstandardRef;
+			private readonly AssemblyRef mscorlibRef;
+			private readonly AssemblyRef corelibRef;
+
 			/// <summary>
 			///     Initializes a new instance of the <see cref="InjectContext" /> class.
 			/// </summary>
@@ -267,6 +272,10 @@ namespace Confuser.Core.Helpers {
 				OriginModule = module;
 				TargetModule = target;
 				importer = new Importer(target, ImporterOptions.TryToUseTypeDefs, new GenericParamContext(), this);
+
+				netstandardRef = TryResolveAssembly("netstandard");
+				mscorlibRef = TryResolveAssembly("mscorlib");
+				corelibRef = TryResolveAssembly("System.Private.CoreLib");
 			}
 
 			/// <summary>
@@ -285,47 +294,60 @@ namespace Confuser.Core.Helpers {
 				//HACK: for netcore
 				//System.Enviroment and System.AppDomain is in System.Runtime.Extensions/mscorlib/netstandard
 				//System.Runtime.InteropServices.Marshal is in System.Runtime.InteropServices/mscorlib/netstandard
-				if (source.IsTypeRef && OriginModule.CorLibTypes.AssemblyRef != TargetModule.CorLibTypes.AssemblyRef &&
-					source.DefinitionAssembly == OriginModule.CorLibTypes.AssemblyRef) {
+				if (source.IsTypeRef && OriginModule.CorLibTypes.AssemblyRef != TargetModule.CorLibTypes.AssemblyRef) {
 					var sourceRef = (TypeRef)source;
-					TypeRef typeRef = TryResolveType(sourceRef, TargetModule.CorLibTypes.AssemblyRef, false);
-					if (typeRef == null) {
-						if (source.DefinitionAssembly.Name != "mscorlib")
-							typeRef = TryResolveType(sourceRef, new AssemblyRefUser(source.DefinitionAssembly), false);
+					TypeRef destRef = TryResolveType(sourceRef, TargetModule.CorLibTypes.AssemblyRef, false) ??
+						TryResolveType(sourceRef, netstandardRef, true) ??
+						TryResolveType(sourceRef, mscorlibRef, true) ??
+						TryResolveType(sourceRef, TryResolveAssembly(sourceRef.DefinitionAssembly.Name), false) ??
+						TryResolveType(sourceRef, corelibRef, false);
 
-						typeRef = typeRef ?? TryResolveType(sourceRef, new AssemblyRefUser("netstandard"), true) ??
-							TryResolveType(sourceRef, new AssemblyRefUser("mscorlib"), true) ??
-							TryResolveType(sourceRef, new AssemblyRefUser("System.Private.CoreLib"), false);
+					if (destRef != null) {
+						var stack = new Stack<IMDTokenProvider>(2);
+						stack.Push(destRef);
+						TypeRef cur = destRef;
+						do {
+							var scope = cur.ResolutionScope;
+							stack.Push(scope);
+							cur = scope as TypeRef;
+						} while (cur != null);
+						do {
+							TargetModule.UpdateRowId(stack.Pop());
+						} while (stack.Count > 0);
 					}
-					if (typeRef != null) {
-						TargetModule.UpdateRowId(typeRef.ResolutionScope);
-						TargetModule.UpdateRowId(typeRef);
-						MemberMap[source] = typeRef;
+
+					MemberMap[source] = destRef;
+					return destRef;
+				}
+
+				return null;
+			}
+
+			TypeRef TryResolveType(TypeRef sourceRef, AssemblyRef scope, bool followForward) {
+				if (scope == null)
+					return null;
+
+				var typeRef = Import2(sourceRef, scope);
+
+				var scopeDef = TargetModule.Context.AssemblyResolver.Resolve(typeRef.DefinitionAssembly, TargetModule);
+				if (scopeDef != null) {
+					if (scopeDef.TypeExists(typeRef))
 						return typeRef;
+					var sigComparer = new SigComparer(SigComparerOptions.DontCompareTypeScope);
+					var exportType = scopeDef.Modules.SelectMany(m => m.ExportedTypes).Where(et => sigComparer.Equals(et, typeRef)).FirstOrDefault();
+					if (exportType != null) {
+						if (followForward && (corelibRef == null || exportType.Implementation.Name != corelibRef.Name))
+							return exportType.ToTypeRef();
+						else
+							return typeRef;
 					}
 				}
 
 				return null;
 			}
 
-			TypeRef TryResolveType(TypeRef sourceRef, AssemblyRef scope, bool checkExport) {
-				var typeRef = Import2(sourceRef, scope);
-
-				if (checkExport) {
-					var scopeDef = TargetModule.Context.AssemblyResolver.Resolve(typeRef.DefinitionAssembly, TargetModule);
-					if (scopeDef != null) {
-						var sigComparer = new SigComparer(SigComparerOptions.DontCompareTypeScope);
-						var exportType = scopeDef.Modules.SelectMany(m => m.ExportedTypes).Where(et => sigComparer.Equals(et, typeRef)).FirstOrDefault();
-						if (exportType != null && exportType.Implementation.Name != "System.Private.CoreLib" && exportType.Resolve() != null) {
-							return exportType.ToTypeRef();
-						}
-					}
-				}
-
-				if (typeRef.Resolve() != null)
-					return typeRef;
-
-				return null;
+			AssemblyRef TryResolveAssembly(UTF8String name) {
+				return TargetModule.GetAssemblyRef(name) ?? TargetModule.Context.AssemblyResolver.Resolve(new AssemblyRefUser(name), TargetModule).ToAssemblyRef();
 			}
 
 			TypeRef Import2(TypeRef type, IResolutionScope scope) {

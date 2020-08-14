@@ -68,6 +68,7 @@ namespace Confuser.Protections {
 				ImportAssemblyTypeReferences(originModule, stubModule);
 			}
 			stubModule.Characteristics = originModule.Characteristics;
+			stubModule.Context = originModule.Context;
 			stubModule.Cor20HeaderFlags = originModule.Cor20HeaderFlags;
 			stubModule.Cor20HeaderRuntimeVersion = originModule.Cor20HeaderRuntimeVersion;
 			stubModule.DllCharacteristics = originModule.DllCharacteristics;
