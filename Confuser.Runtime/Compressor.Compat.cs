@@ -45,6 +45,8 @@ namespace Confuser.Runtime {
 			return g;
 		}
 
+		static Func<byte[], Assembly> assemblyLoad = Assembly.Load;
+
 		[STAThread]
 		static int Main(string[] args) {
 			var l = (uint)Mutation.KeyI0;
@@ -52,7 +54,16 @@ namespace Confuser.Runtime {
 
 			GCHandle h = Decrypt(q, (uint)Mutation.KeyI1);
 			var b = (byte[])h.Target;
-			Assembly a = Assembly.Load(b);
+
+			var assemblyLoadCtx = Type.GetType("System.Runtime.Loader.AssemblyLoadContext");
+			if (assemblyLoadCtx != null) {
+				var assemblyLoadCtxDef = assemblyLoadCtx.GetProperty("Default")?.GetValue(null);
+				var assemblyLoadCtxLoad = assemblyLoadCtx.GetMethod("LoadFromStream", new Type[] { typeof(Stream) });
+				if (assemblyLoadCtxDef != null && assemblyLoadCtxLoad != null) {
+					assemblyLoad = (datas) => (Assembly)assemblyLoadCtxLoad.Invoke(assemblyLoadCtxDef, new object[] { new MemoryStream(datas) });
+				}
+			}
+			Assembly a = assemblyLoad(b);
 			Array.Clear(b, 0, b.Length);
 			h.Free();
 			Array.Clear(q, 0, q.Length);
@@ -96,7 +107,7 @@ namespace Confuser.Runtime {
 				GCHandle h = Decrypt(d, s);
 
 				var f = (byte[])h.Target;
-				Assembly a = Assembly.Load(f);
+				Assembly a = assemblyLoad(f);
 				Array.Clear(f, 0, f.Length);
 				h.Free();
 				Array.Clear(d, 0, d.Length);

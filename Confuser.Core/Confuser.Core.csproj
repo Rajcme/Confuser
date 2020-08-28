@@ -17,10 +17,7 @@
   <ItemGroup Label="Nuget Dependencies">
     <PackageReference Include="Microsoft.Win32.Registry" Version="4.*" />
     <PackageReference Include="System.Threading" Version="4.*" />
-  </ItemGroup>
-
-  <ItemGroup Label="Project Dependencies">
-    <ProjectReference Include="..\dnlib\src\dnlib.csproj" />
+    <PackageReference Include="dnlib" Version="3.3.2" />
   </ItemGroup>
 
 

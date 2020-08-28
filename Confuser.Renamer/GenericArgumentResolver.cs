@@ -6,7 +6,7 @@ namespace Confuser.Renamer {
 	/// <summary>
 	///     Resolves generic arguments
 	/// </summary>
-	public struct GenericArgumentResolver {
+	public ref struct GenericArgumentResolver {
 		GenericArguments genericArguments;
 		RecursionCounter recursionCounter;
 
@@ -53,8 +53,6 @@ namespace Confuser.Renamer {
 		}
 
 		bool ReplaceGenericArg(ref TypeSig typeSig) {
-			if (genericArguments == null)
-				return false;
 			TypeSig newTypeSig = genericArguments.Resolve(typeSig);
 			if (newTypeSig != typeSig) {
 				typeSig = newTypeSig;

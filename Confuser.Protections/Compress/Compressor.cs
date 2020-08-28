@@ -62,12 +62,20 @@ namespace Confuser.Protections {
 				var assembly = new AssemblyDefUser(originModule.Assembly);
 				assembly.Name += ".cr";
 				assembly.Modules.Add(stubModule);
+				var targetFramework = originModule.Assembly.CustomAttributes.FirstOrDefault(ca => ca.TypeFullName == "System.Runtime.Versioning.TargetFrameworkAttribute");
+				if (targetFramework != null) {
+					var attrType = stubModule.CorLibTypes.GetTypeRef("System.Runtime.Versioning", "TargetFrameworkAttribute");
+					var ctorSig = MethodSig.CreateInstance(stubModule.CorLibTypes.Void, stubModule.CorLibTypes.String);
+					assembly.CustomAttributes.Add(new CustomAttribute(
+						new MemberRefUser(stubModule, ".ctor", ctorSig, attrType), new CAArgument[] { new CAArgument(stubModule.CorLibTypes.String, targetFramework.ConstructorArguments[0].Value) }));
+				}
 			}
 			else {
 				ctx.Assembly.Modules.Insert(0, stubModule);
 				ImportAssemblyTypeReferences(originModule, stubModule);
 			}
 			stubModule.Characteristics = originModule.Characteristics;
+			stubModule.Context = originModule.Context;
 			stubModule.Cor20HeaderFlags = originModule.Cor20HeaderFlags;
 			stubModule.Cor20HeaderRuntimeVersion = originModule.Cor20HeaderRuntimeVersion;
 			stubModule.DllCharacteristics = originModule.DllCharacteristics;
@@ -196,7 +204,7 @@ namespace Confuser.Protections {
 				repl.AddRange(arg);
 				repl.Add(Instruction.Create(OpCodes.Dup));
 				repl.Add(Instruction.Create(OpCodes.Ldtoken, dataField));
-				repl.Add(Instruction.Create(OpCodes.Call, stubModule.Import(
+				repl.Add(Instruction.Create(OpCodes.Call, InjectHelper.Import(stubModule,
 					typeof(RuntimeHelpers).GetMethod("InitializeArray"))));
 				return repl.ToArray();
 			});
@@ -301,7 +309,7 @@ namespace Confuser.Protections {
 			}
 		}
 
-		class KeyInjector : IModuleWriterListener {
+		class KeyInjector {
 			readonly CompressorContext ctx;
 
 			public KeyInjector(CompressorContext ctx) {
@@ -312,7 +320,7 @@ namespace Confuser.Protections {
 				OnWriterEvent(args.Writer, args.Event);
 			}
 
-			public void OnWriterEvent(ModuleWriterBase writer, ModuleWriterEvent evt) {
+			private void OnWriterEvent(ModuleWriterBase writer, ModuleWriterEvent evt) {
 				if (evt == ModuleWriterEvent.MDBeginCreateTables) {
 					// Add key signature
 					uint sigBlob = writer.Metadata.BlobHeap.Add(ctx.KeySig);

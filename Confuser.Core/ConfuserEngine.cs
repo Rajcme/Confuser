@@ -94,11 +94,12 @@ namespace Confuser.Core {
 				var asmResolver = new AssemblyResolver();
 				asmResolver.EnableTypeDefCache = true;
 				asmResolver.DefaultModuleContext = new ModuleContext(asmResolver);
+				asmResolver.EnableFrameworkRedirect = false;
 				context.Resolver = asmResolver;
 				context.BaseDirectory = Path.Combine(Environment.CurrentDirectory, context.Project.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar);
 				context.OutputDirectory = Path.Combine(context.Project.BaseDirectory, context.Project.OutputDirectory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar);
 				foreach (string probePath in context.Project.ProbePaths)
-					asmResolver.PostSearchPaths.Insert(0, Path.Combine(context.BaseDirectory, probePath));
+					asmResolver.PreSearchPaths.Add(Path.Combine(context.BaseDirectory, probePath));
 
 				context.CheckCancellation();
 
@@ -384,6 +385,8 @@ namespace Confuser.Core {
 				if (!Path.IsPathRooted(output))
 					output = Path.Combine(Environment.CurrentDirectory, output);
 				output = Utils.GetRelativePath(output, context.BaseDirectory);
+				if (Path.IsPathRooted(output))
+					output = Path.GetFileName(output);
 			}
 			else {
 				output = context.CurrentModule.Name;
