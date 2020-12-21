@@ -45,7 +45,7 @@ namespace Confuser.Runtime {
 			// we'll be using equals.
 			if (Assembly.GetExecutingAssembly().Equals(Assembly.GetCallingAssembly())) {
 				id = Mutation.Placeholder(id);
-				int t = id >> 30;
+				int t = (int)((uint)id >> 30);
 
 				T ret;
 				id = (id & 0x3fffffff) << 2;
