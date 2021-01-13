@@ -196,12 +196,11 @@ namespace Confuser.Renamer {
 		}
 
 		string ParseGenericName(string name, out int? count) {
-			if (name.LastIndexOf('`') != -1) {
-				int index = name.LastIndexOf('`');
-				int c;
-				if (int.TryParse(name.Substring(index + 1), out c)) {
+			int graveIndex = name.LastIndexOf('`');
+			if (graveIndex != -1) {
+				if (int.TryParse(name.Substring(graveIndex + 1), out int c)) {
 					count = c;
-					return name.Substring(0, index);
+					return name.Substring(0, graveIndex);
 				}
 			}
 			count = null;
@@ -251,10 +250,10 @@ namespace Confuser.Renamer {
 				}
 				catch (FormatException ex) {
 					throw new ArgumentException(
-						string.Format(CultureInfo.InvariantCulture, Resources.NameService_ObfuscateName_InvalidFormat, format), 
+						string.Format(CultureInfo.InvariantCulture, Resources.NameService_ObfuscateName_InvalidFormat, format),
 						nameof(format), ex);
 				}
-				
+
 				if (!identifiers.Contains(MakeGenericName(newName, count)))
 					break;
 				hash = Utils.SHA1(hash);
