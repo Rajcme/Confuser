@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -12,12 +11,15 @@ namespace ConfuserEx {
 	/// <summary>
 	///     Interaction logic for StackTraceDecoder.xaml
 	/// </summary>
-	public partial class StackTraceDecoder : Window {
-		public StackTraceDecoder() {
-			InitializeComponent();
-		}
+	public partial class StackTraceDecoder {
+		public StackTraceDecoder() => InitializeComponent();
 
-		readonly Dictionary<string, string> symMap = new Dictionary<string, string>();
+		static readonly Regex MapSymbolMatcher = new Regex("_[a-zA-Z0-9]+", RegexOptions.Compiled);
+		static readonly Regex PassSymbolMatcher = new Regex("[a-zA-Z0-9_$]{23,}", RegexOptions.Compiled);
+		const int MaxPathLength = 35;
+
+		readonly Dictionary<string, string> _symMap = new Dictionary<string, string>();
+		ReversibleRenamer _renamer;
 
 		void PathBox_TextChanged(object sender, TextChangedEventArgs e) {
 			if (File.Exists(PathBox.Text))
@@ -26,18 +28,18 @@ namespace ConfuserEx {
 
 		void LoadSymMap(string path) {
 			string shortPath = path;
-			if (path.Length > 35)
-				shortPath = "..." + path.Substring(path.Length - 35, 35);
+			if (path.Length > MaxPathLength)
+				shortPath = "..." + path.Substring(path.Length - MaxPathLength, MaxPathLength);
 
 			try {
-				symMap.Clear();
+				_symMap.Clear();
 				using (var reader = new StreamReader(File.OpenRead(path))) {
 					var line = reader.ReadLine();
 					while (line != null) {
 						int tabIndex = line.IndexOf('\t');
 						if (tabIndex == -1)
 							throw new FileFormatException();
-						symMap.Add(line.Substring(0, tabIndex), line.Substring(tabIndex + 1));
+						_symMap.Add(line.Substring(0, tabIndex), line.Substring(tabIndex + 1));
 						line = reader.ReadLine();
 					}
 				}
@@ -49,36 +51,31 @@ namespace ConfuserEx {
 		}
 
 		void ChooseMapPath(object sender, RoutedEventArgs e) {
-			var ofd = new VistaOpenFileDialog();
-			ofd.Filter = "Symbol maps (*.map)|*.map|All Files (*.*)|*.*";
+			var ofd = new VistaOpenFileDialog {Filter = "Symbol maps (*.map)|*.map|All Files (*.*)|*.*"};
 			if (ofd.ShowDialog() ?? false) {
 				PathBox.Text = ofd.FileName;
 			}
 		}
 
-		readonly Regex mapSymbolMatcher = new Regex("_[a-zA-Z0-9]+");
-		readonly Regex passSymbolMatcher = new Regex("[a-zA-Z0-9_$]{23,}");
-		ReversibleRenamer renamer;
-
 		void Decode_Click(object sender, RoutedEventArgs e) {
 			var trace = stackTrace.Text;
 			if (optSym.IsChecked ?? true)
-				stackTrace.Text = mapSymbolMatcher.Replace(trace, DecodeSymbolMap);
+				stackTrace.Text = MapSymbolMatcher.Replace(trace, DecodeSymbolMap);
 			else {
-				renamer = new ReversibleRenamer(PassBox.Password);
-				stackTrace.Text = passSymbolMatcher.Replace(trace, DecodeSymbolPass);
+				_renamer = new ReversibleRenamer(PassBox.Password);
+				stackTrace.Text = PassSymbolMatcher.Replace(trace, DecodeSymbolPass);
 			}
 		}
 
 		string DecodeSymbolMap(Match match) {
 			var sym = match.Value;
-			return RemoveMethodParameters(symMap.GetValueOrDefault(sym, sym));
+			return RemoveMethodParameters(_symMap.GetValueOrDefault(sym, sym));
 		}
 
 		string DecodeSymbolPass(Match match) {
 			var sym = match.Value;
 			try {
-				return RemoveMethodParameters(renamer.Decrypt(sym));
+				return RemoveMethodParameters(_renamer.Decrypt(sym));
 			}
 			catch {
 				return sym;
