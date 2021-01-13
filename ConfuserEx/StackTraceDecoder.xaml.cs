@@ -72,17 +72,25 @@ namespace ConfuserEx {
 
 		string DecodeSymbolMap(Match match) {
 			var sym = match.Value;
-			return symMap.GetValueOrDefault(sym, sym);
+			return RemoveMethodParameters(symMap.GetValueOrDefault(sym, sym));
 		}
 
 		string DecodeSymbolPass(Match match) {
 			var sym = match.Value;
 			try {
-				return renamer.Decrypt(sym);
+				return RemoveMethodParameters(renamer.Decrypt(sym));
 			}
 			catch {
 				return sym;
 			}
+		}
+
+		string RemoveMethodParameters(string symbol) {
+			var leftParenIndex = symbol.IndexOf('(');
+			if (leftParenIndex != -1) {
+				return symbol.Remove(leftParenIndex);
+			}
+			return symbol;
 		}
 	}
 }
