@@ -34,10 +34,10 @@ namespace Confuser.Renamer {
 		void AddReference<T>(T obj, INameReference<T> reference);
 		IList<INameReference> GetReferences(object obj);
 
-		void SetOriginalName(object obj, string name);
-		void SetOriginalNamespace(object obj, string ns);
-		string GetOriginalName(object obj);
-		string GetOriginalNamespace(object obj);
+		void SetOriginalName(IDnlibDef obj, string name);
+		void SetOriginalNamespace(TypeDef obj, string ns);
+		string GetOriginalName(IDnlibDef obj);
+		string GetOriginalNamespace(TypeDef typeDef);
 
 		bool IsRenamed(IDnlibDef def);
 		void SetIsRenamed(IDnlibDef def);
@@ -150,9 +150,9 @@ namespace Confuser.Renamer {
 				analyze = context.Pipeline.FindPhase<AnalyzePhase>();
 
 			SetOriginalName(def, def.Name);
-			if (def is TypeDef) {
-				GetVTables().GetVTable((TypeDef)def);
-				SetOriginalNamespace(def, ((TypeDef)def).Namespace);
+			if (def is TypeDef typeDef) {
+				GetVTables().GetVTable(typeDef);
+				SetOriginalNamespace(typeDef, typeDef.Namespace);
 			}
 			analyze.Analyze(this, context, ProtectionParameters.Empty, def, true);
 		}
@@ -256,14 +256,14 @@ namespace Confuser.Renamer {
 			return ObfuscateName(Utils.ToHexString(random.NextBytes(16)), mode);
 		}
 
-		public void SetOriginalName(object obj, string name) {
+		public void SetOriginalName(IDnlibDef dnlibDef, string name) {
 			identifiers.Add(name);
-			context.Annotations.Set(obj, OriginalNameKey, name);
+			context.Annotations.Set(dnlibDef, OriginalNameKey, name);
 		}
 
-		public void SetOriginalNamespace(object obj, string ns) {
+		public void SetOriginalNamespace(TypeDef typeDef, string ns) {
 			identifiers.Add(ns);
-			context.Annotations.Set(obj, OriginalNamespaceKey, ns);
+			context.Annotations.Set(typeDef, OriginalNamespaceKey, ns);
 		}
 
 		public void RegisterRenamer(IRenamer renamer) {
@@ -338,13 +338,9 @@ namespace Confuser.Renamer {
 			return context.Annotations.GetLazy(obj, ReferencesKey, key => new List<INameReference>());
 		}
 
-		public string GetOriginalName(object obj) {
-			return context.Annotations.Get(obj, OriginalNameKey, "");
-		}
+		public string GetOriginalName(IDnlibDef obj) => context.Annotations.Get(obj, OriginalNameKey, "");
 
-		public string GetOriginalNamespace(object obj) {
-			return context.Annotations.Get(obj, OriginalNamespaceKey, "");
-		}
+		public string GetOriginalNamespace(TypeDef typeDef) => context.Annotations.Get(typeDef, OriginalNamespaceKey, "");
 
 		public ICollection<KeyValuePair<string, string>> GetNameMap() {
 			return nameMap2;

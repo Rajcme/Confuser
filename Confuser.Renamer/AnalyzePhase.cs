@@ -34,17 +34,16 @@ namespace Confuser.Renamer {
 			foreach (IDnlibDef def in parameters.Targets.WithProgress(context.Logger)) {
 				ParseParameters(def, context, service, parameters);
 
-				if (def is ModuleDef) {
-					var module = (ModuleDef)def;
-					foreach (Resource res in module.Resources)
-						service.SetOriginalName(res, res.Name);
+				if (def is ModuleDef module) {
+					foreach (var res in module.Resources)
+						service.SetOriginalName(module, res.Name);
 				}
 				else
 					service.SetOriginalName(def, def.Name);
 
-				if (def is TypeDef) {
-					service.GetVTables().GetVTable((TypeDef)def);
-					service.SetOriginalNamespace(def, ((TypeDef)def).Namespace);
+				if (def is TypeDef typeDef) {
+					service.GetVTables().GetVTable(typeDef);
+					service.SetOriginalNamespace(typeDef, typeDef.Namespace);
 				}
 				context.CheckCancellation();
 			}
