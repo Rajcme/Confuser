@@ -60,9 +60,10 @@ namespace Confuser.Renamer {
 		AnalyzePhase analyze;
 
 		readonly HashSet<string> identifiers = new HashSet<string>();
+
 		readonly byte[] nameId = new byte[8];
-		readonly Dictionary<string, string> nameMap1 = new Dictionary<string, string>();
-		readonly Dictionary<string, string> nameMap2 = new Dictionary<string, string>();
+		readonly Dictionary<string, string> _originalToObfuscatedNameMap = new Dictionary<string, string>();
+		readonly Dictionary<string, string> _obfuscatedToOriginalNameMap = new Dictionary<string, string>();
 		internal ReversibleRenamer reversibleRenamer;
 
 		public NameService(ConfuserContext context) {
@@ -199,7 +200,7 @@ namespace Confuser.Renamer {
 		public string ObfuscateName(string name, RenameMode mode) => ObfuscateName(null, name, mode);
 
 		public string ObfuscateName(string format, string name, RenameMode mode) {
-			string newName = null;
+			string newName;
 
 			if (string.IsNullOrEmpty(name))
 				return string.Empty;
@@ -211,6 +212,7 @@ namespace Confuser.Renamer {
 				newName = name.Replace('.', '_');
 				return mode == RenameMode.Debug ? "_" + newName : newName;
 			}
+
 			if (mode == RenameMode.Reversible) {
 				if (reversibleRenamer == null)
 					throw new ArgumentException("Password not provided for reversible renaming.");
@@ -218,11 +220,11 @@ namespace Confuser.Renamer {
 				return newName;
 			}
 
-			if (nameMap1.ContainsKey(name))
-				return nameMap1[name];
+			if (_originalToObfuscatedNameMap.TryGetValue(name, out newName))
+				return newName;
 
 			byte[] hash = Utils.Xor(Utils.SHA1(Encoding.UTF8.GetBytes(name)), nameSeed);
-			for (int i = 0; i < 100; i++) {
+			while (true) {
 				newName = ObfuscateNameInternal(hash, mode);
 
 				try {
@@ -235,14 +237,14 @@ namespace Confuser.Renamer {
 						nameof(format), ex);
 				}
 
-				if (!identifiers.Contains(newName))
+				if (!identifiers.Contains(newName) && !_obfuscatedToOriginalNameMap.ContainsKey(newName))
 					break;
 				hash = Utils.SHA1(hash);
 			}
 
 			if ((mode & RenameMode.Decodable) != 0) {
-				nameMap2[newName] = name;
-				nameMap1[name] = newName;
+				_obfuscatedToOriginalNameMap.Add(newName, name);
+				_originalToObfuscatedNameMap.Add(name, newName);
 			}
 
 			return newName;
@@ -343,7 +345,7 @@ namespace Confuser.Renamer {
 		public string GetOriginalNamespace(TypeDef typeDef) => context.Annotations.Get(typeDef, OriginalNamespaceKey, "");
 
 		public ICollection<KeyValuePair<string, string>> GetNameMap() {
-			return nameMap2;
+			return _obfuscatedToOriginalNameMap;
 		}
 
 		public bool IsRenamed(IDnlibDef def) => context.Annotations.Get(def, IsRenamedKey, !CanRename(def));
