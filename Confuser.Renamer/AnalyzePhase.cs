@@ -36,14 +36,13 @@ namespace Confuser.Renamer {
 
 				if (def is ModuleDef module) {
 					foreach (var res in module.Resources)
-						service.SetOriginalName(module, res.Name);
+						service.AddReservedIdentifier(res.Name);
 				}
 				else
-					service.SetOriginalName(def, def.Name);
+					service.SetOriginalName(def);
 
 				if (def is TypeDef typeDef) {
 					service.GetVTables().GetVTable(typeDef);
-					service.SetOriginalNamespace(typeDef, typeDef.Namespace);
 				}
 				context.CheckCancellation();
 			}

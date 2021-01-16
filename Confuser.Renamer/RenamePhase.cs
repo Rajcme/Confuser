@@ -73,17 +73,15 @@ namespace Confuser.Renamer {
 				if (cancel)
 					continue;
 
-				if (def is TypeDef) {
-					var typeDef = (TypeDef)def;
-					if (parameters.GetParameter(context, def, "flatten", true)) {
-						typeDef.Name = service.ObfuscateName(typeDef.FullName, mode);
+				if (def is TypeDef typeDef) {
+					if (parameters.GetParameter(context, typeDef, "flatten", true)) {
 						typeDef.Namespace = "";
 					}
 					else {
-						var nsFormat = parameters.GetParameter(context, def, "nsFormat", "{0}");
+						var nsFormat = parameters.GetParameter(context, typeDef, "nsFormat", "{0}");
 						typeDef.Namespace = service.ObfuscateName(nsFormat, typeDef.Namespace, mode);
-						typeDef.Name = service.ObfuscateName(typeDef.Name, mode);
 					}
+					typeDef.Name = service.ObfuscateName(typeDef, mode);
 					foreach (var param in typeDef.GenericParameters)
 						param.Name = ((char)(param.Number + 1)).ToString();
 				}
@@ -91,10 +89,10 @@ namespace Confuser.Renamer {
 					foreach (var param in ((MethodDef)def).GenericParameters)
 						param.Name = ((char)(param.Number + 1)).ToString();
 
-					def.Name = service.ObfuscateName(def.Name, mode);
+					def.Name = service.ObfuscateName(def, mode);
 				}
 				else
-					def.Name = service.ObfuscateName(def.Name, mode);
+					def.Name = service.ObfuscateName(def, mode);
 
 				int updatedReferences = -1;
 				do {

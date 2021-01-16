@@ -26,6 +26,7 @@ namespace Confuser.Renamer {
 		void ReduceRenameMode(object obj, RenameMode val);
 
 		string ObfuscateName(string name, RenameMode mode);
+		string ObfuscateName(IDnlibDef name, RenameMode mode);
 		string RandomName();
 		string RandomName(RenameMode mode);
 
@@ -34,10 +35,8 @@ namespace Confuser.Renamer {
 		void AddReference<T>(T obj, INameReference<T> reference);
 		IList<INameReference> GetReferences(object obj);
 
-		void SetOriginalName(IDnlibDef obj, string name);
-		void SetOriginalNamespace(TypeDef obj, string ns);
-		string GetOriginalName(IDnlibDef obj);
-		string GetOriginalNamespace(TypeDef typeDef);
+		void SetOriginalName(IDnlibDef obj);
+		string GetOriginalFullName(IDnlibDef obj);
 
 		bool IsRenamed(IDnlibDef def);
 		void SetIsRenamed(IDnlibDef def);
@@ -49,8 +48,7 @@ namespace Confuser.Renamer {
 		static readonly object CanRenameKey = new object();
 		static readonly object RenameModeKey = new object();
 		static readonly object ReferencesKey = new object();
-		static readonly object OriginalNameKey = new object();
-		static readonly object OriginalNamespaceKey = new object();
+		static readonly object OriginalFullNameKey = new object();
 		static readonly object IsRenamedKey = new object();
 
 		readonly ConfuserContext context;
@@ -150,10 +148,9 @@ namespace Confuser.Renamer {
 			if (analyze == null)
 				analyze = context.Pipeline.FindPhase<AnalyzePhase>();
 
-			SetOriginalName(def, def.Name);
+			SetOriginalName(def);
 			if (def is TypeDef typeDef) {
 				GetVTables().GetVTable(typeDef);
-				SetOriginalNamespace(typeDef, typeDef.Namespace);
 			}
 			analyze.Analyze(this, context, ProtectionParameters.Empty, def, true);
 		}
@@ -198,6 +195,11 @@ namespace Confuser.Renamer {
 		}
 
 		public string ObfuscateName(string name, RenameMode mode) => ObfuscateName(null, name, mode);
+
+		public string ObfuscateName(IDnlibDef dnlibDef, RenameMode mode) {
+			var originalFullName = GetOriginalFullName(dnlibDef);
+			return ObfuscateName(null, originalFullName, mode);
+		}
 
 		public string ObfuscateName(string format, string name, RenameMode mode) {
 			string newName;
@@ -258,15 +260,23 @@ namespace Confuser.Renamer {
 			return ObfuscateName(Utils.ToHexString(random.NextBytes(16)), mode);
 		}
 
-		public void SetOriginalName(IDnlibDef dnlibDef, string name) {
-			identifiers.Add(name);
-			context.Annotations.Set(dnlibDef, OriginalNameKey, name);
+		public void SetOriginalName(IDnlibDef dnlibDef) {
+			AddReservedIdentifier(dnlibDef.Name);
+
+			string fullName = dnlibDef.FullName;
+			if (dnlibDef is TypeDef typeDef) {
+				AddReservedIdentifier(typeDef.Namespace);
+			}
+			else {
+				int firstSpaceIndex = fullName.IndexOf(' ');
+				if (firstSpaceIndex != -1) {
+					fullName = fullName.Substring(firstSpaceIndex + 1);
+				}
+			}
+			context.Annotations.Set(dnlibDef, OriginalFullNameKey, fullName);
 		}
 
-		public void SetOriginalNamespace(TypeDef typeDef, string ns) {
-			identifiers.Add(ns);
-			context.Annotations.Set(typeDef, OriginalNamespaceKey, ns);
-		}
+		public void AddReservedIdentifier(string id) => identifiers.Add(id);
 
 		public void RegisterRenamer(IRenamer renamer) {
 			Renamers.Add(renamer);
@@ -340,9 +350,7 @@ namespace Confuser.Renamer {
 			return context.Annotations.GetLazy(obj, ReferencesKey, key => new List<INameReference>());
 		}
 
-		public string GetOriginalName(IDnlibDef obj) => context.Annotations.Get(obj, OriginalNameKey, "");
-
-		public string GetOriginalNamespace(TypeDef typeDef) => context.Annotations.Get(typeDef, OriginalNamespaceKey, "");
+		public string GetOriginalFullName(IDnlibDef obj) => context.Annotations.Get(obj, OriginalFullNameKey, "");
 
 		public ICollection<KeyValuePair<string, string>> GetNameMap() {
 			return _obfuscatedToOriginalNameMap;

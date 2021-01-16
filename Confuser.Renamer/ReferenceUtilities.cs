@@ -6,46 +6,22 @@ namespace Confuser.Renamer {
 		internal static StringBuilder AppendDescription(this StringBuilder builder, IDnlibDef def, INameService nameService) {
 			if (nameService is null)
 				return builder.AppendHashedIdentifier("Name", def.FullName);
-			
-			builder.Append("Original Name").Append(": ");
 
-			switch (def) {
-				case TypeDef typeDef:
-					builder.AppendTypeName(typeDef, nameService);
-					break;
-				case IMemberDef memberDef:
-					builder.AppendTypeName(memberDef.DeclaringType, nameService)
-						.Append("::")
-						.AppendOriginalName(memberDef, nameService);
-					break;
-				default:
-					builder.AppendOriginalName(def, nameService);
-					break;
-			}
+			builder.Append("Original Name").Append(": ");
+			builder.AppendOriginalName(def, nameService);
 			builder.Append("; ");
 			return builder.AppendHashedIdentifier("Name", def.FullName);
 		}
-
-		private static StringBuilder AppendTypeName(this StringBuilder builder, TypeDef typeDef, INameService nameService) {
-			var originalNamespace = nameService.GetOriginalNamespace(typeDef);
-			var originalName = nameService.GetOriginalName(typeDef);
-
-			if (string.IsNullOrWhiteSpace(originalNamespace))
-				originalNamespace = typeDef.Namespace;
-			if (string.IsNullOrWhiteSpace(originalName))
-				originalName = typeDef.Name;
-
-			if (!string.IsNullOrWhiteSpace(originalNamespace))
-				builder.Append(originalNamespace).Append(".");
-
-			return builder.Append(originalName);
-		}
-
-		private static StringBuilder AppendOriginalName(this StringBuilder builder, IDnlibDef def, INameService nameService) {
-			var originalName = nameService.GetOriginalName(def);
-			if (string.IsNullOrWhiteSpace(originalName))
-				originalName = def.Name;
-			return builder.Append(originalName);
+		static void AppendOriginalName(this StringBuilder builder, IDnlibDef def, INameService nameService) {
+			var originalFullName = nameService.GetOriginalFullName(def);
+			if (string.IsNullOrWhiteSpace(originalFullName)) {
+				originalFullName = def.FullName;
+				int firstSpaceInd = originalFullName.IndexOf(' ');
+				if (firstSpaceInd != -1) {
+					originalFullName = originalFullName.Substring(firstSpaceInd + 1);
+				}
+			}
+			builder.Append(originalFullName);
 		}
 
 		internal static StringBuilder AppendReferencedDef(this StringBuilder builder, IDnlibDef def, INameService nameService) {
