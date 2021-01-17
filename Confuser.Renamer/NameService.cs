@@ -352,9 +352,7 @@ namespace Confuser.Renamer {
 		public string GetOriginalFullName(IDnlibDef obj) =>
 			context.Annotations.Get(obj, OriginalFullNameKey, (string)null) ?? GetSimplifiedFullName(obj);
 
-		public ICollection<KeyValuePair<string, string>> GetNameMap() {
-			return _obfuscatedToOriginalNameMap;
-		}
+		public IReadOnlyDictionary<string, string> GetNameMap() => _obfuscatedToOriginalNameMap;
 
 		public bool IsRenamed(IDnlibDef def) => context.Annotations.Get(def, IsRenamedKey, !CanRename(def));
 
