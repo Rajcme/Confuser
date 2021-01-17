@@ -182,7 +182,6 @@ namespace Confuser.Renamer {
 					IncrementNameId();
 					return "_" + Utils.EncodeString(nameId, alphaNumCharset);
 				default:
-
 					throw new NotSupportedException("Rename mode '" + mode + "' is not supported.");
 			}
 		}
