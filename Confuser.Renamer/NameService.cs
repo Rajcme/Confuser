@@ -35,7 +35,7 @@ namespace Confuser.Renamer {
 		void AddReference<T>(T obj, INameReference<T> reference);
 		IList<INameReference> GetReferences(object obj);
 
-		void SetOriginalName(IDnlibDef obj);
+		void SetOriginalName(IDnlibDef obj, string fullName = null);
 		string GetOriginalFullName(IDnlibDef obj);
 
 		bool IsRenamed(IDnlibDef def);
@@ -260,18 +260,17 @@ namespace Confuser.Renamer {
 			return ObfuscateName(Utils.ToHexString(random.NextBytes(16)), mode);
 		}
 
-		public void SetOriginalName(IDnlibDef dnlibDef) {
-			AddReservedIdentifier(dnlibDef.Name);
-
-			string fullName = dnlibDef.FullName;
-			if (dnlibDef is TypeDef typeDef) {
-				AddReservedIdentifier(typeDef.Namespace);
+		public void SetOriginalName(IDnlibDef dnlibDef, string newFullName = null) {
+			string fullName;
+			if (newFullName == null) {
+				AddReservedIdentifier(dnlibDef.Name);
+				fullName = GetSimplifiedFullName(dnlibDef);
+				if (dnlibDef is TypeDef typeDef) {
+					AddReservedIdentifier(typeDef.Namespace);
+				}
 			}
 			else {
-				int firstSpaceIndex = fullName.IndexOf(' ');
-				if (firstSpaceIndex != -1) {
-					fullName = fullName.Substring(firstSpaceIndex + 1);
-				}
+				fullName = newFullName;
 			}
 			context.Annotations.Set(dnlibDef, OriginalFullNameKey, fullName);
 		}
@@ -350,7 +349,8 @@ namespace Confuser.Renamer {
 			return context.Annotations.GetLazy(obj, ReferencesKey, key => new List<INameReference>());
 		}
 
-		public string GetOriginalFullName(IDnlibDef obj) => context.Annotations.Get(obj, OriginalFullNameKey, "");
+		public string GetOriginalFullName(IDnlibDef obj) =>
+			context.Annotations.Get(obj, OriginalFullNameKey, (string)null) ?? GetSimplifiedFullName(obj);
 
 		public ICollection<KeyValuePair<string, string>> GetNameMap() {
 			return _obfuscatedToOriginalNameMap;
@@ -359,5 +359,17 @@ namespace Confuser.Renamer {
 		public bool IsRenamed(IDnlibDef def) => context.Annotations.Get(def, IsRenamedKey, !CanRename(def));
 
 		public void SetIsRenamed(IDnlibDef def) => context.Annotations.Set(def, IsRenamedKey, true);
+
+		string GetSimplifiedFullName(IDnlibDef dnlibDef) {
+			string result = dnlibDef.FullName;
+			if (!(dnlibDef is TypeDef)) {
+				int lastSpaceIndex = result.LastIndexOf(' ');
+				if (lastSpaceIndex != -1) {
+					result = result.Substring(lastSpaceIndex + 1);
+				}
+			}
+
+			return result;
+		}
 	}
 }

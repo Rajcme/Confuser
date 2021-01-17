@@ -8,20 +8,9 @@ namespace Confuser.Renamer {
 				return builder.AppendHashedIdentifier("Name", def.FullName);
 
 			builder.Append("Original Name").Append(": ");
-			builder.AppendOriginalName(def, nameService);
+			builder.Append(nameService.GetOriginalFullName(def));
 			builder.Append("; ");
 			return builder.AppendHashedIdentifier("Name", def.FullName);
-		}
-		static void AppendOriginalName(this StringBuilder builder, IDnlibDef def, INameService nameService) {
-			var originalFullName = nameService.GetOriginalFullName(def);
-			if (string.IsNullOrWhiteSpace(originalFullName)) {
-				originalFullName = def.FullName;
-				int firstSpaceInd = originalFullName.IndexOf(' ');
-				if (firstSpaceInd != -1) {
-					originalFullName = originalFullName.Substring(firstSpaceInd + 1);
-				}
-			}
-			builder.Append(originalFullName);
 		}
 
 		internal static StringBuilder AppendReferencedDef(this StringBuilder builder, IDnlibDef def, INameService nameService) {
