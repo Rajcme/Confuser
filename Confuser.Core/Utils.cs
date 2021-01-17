@@ -12,6 +12,11 @@ namespace Confuser.Core {
 	public static class Utils {
 		static readonly char[] hexCharset = "0123456789abcdef".ToCharArray();
 
+		// Use not thread safe buffers since app is not multithreaded
+		static readonly StringBuilder Buffer = new StringBuilder();
+		static readonly SHA1Managed Sha1Managed = new SHA1Managed();
+		static readonly SHA256Managed Sha256Managed = new SHA256Managed();
+
 		/// <summary>
 		///     Gets the value associated with the specified key, or default value if the key does not exists.
 		/// </summary>
@@ -24,9 +29,8 @@ namespace Confuser.Core {
 		public static TValue GetValueOrDefault<TKey, TValue>(
 			this Dictionary<TKey, TValue> dictionary,
 			TKey key,
-			TValue defValue = default(TValue)) {
-			TValue ret;
-			if (dictionary.TryGetValue(key, out ret))
+			TValue defValue = default) {
+			if (dictionary.TryGetValue(key, out var ret))
 				return ret;
 			return defValue;
 		}
@@ -44,8 +48,7 @@ namespace Confuser.Core {
 			this Dictionary<TKey, TValue> dictionary,
 			TKey key,
 			Func<TKey, TValue> defValueFactory) {
-			TValue ret;
-			if (dictionary.TryGetValue(key, out ret))
+			if (dictionary.TryGetValue(key, out var ret))
 				return ret;
 			return defValueFactory(key);
 		}
@@ -62,8 +65,7 @@ namespace Confuser.Core {
 		public static void AddListEntry<TKey, TValue>(this IDictionary<TKey, List<TValue>> self, TKey key, TValue value) {
 			if (key == null)
 				throw new ArgumentNullException("key");
-			List<TValue> list;
-			if (!self.TryGetValue(key, out list))
+			if (!self.TryGetValue(key, out var list))
 				list = self[key] = new List<TValue>();
 			list.Add(value);
 		}
@@ -102,36 +104,14 @@ namespace Confuser.Core {
 		/// </summary>
 		/// <param name="buffer">The input buffer.</param>
 		/// <returns>The SHA1 hash of the input buffer.</returns>
-		public static byte[] SHA1(byte[] buffer) {
-			var sha = new SHA1Managed();
-			return sha.ComputeHash(buffer);
-		}
-
-		/// <summary>
-		///     Xor the values in the two buffer together.
-		/// </summary>
-		/// <param name="buffer1">The input buffer 1.</param>
-		/// <param name="buffer2">The input buffer 2.</param>
-		/// <returns>The result buffer.</returns>
-		/// <exception cref="System.ArgumentException">Length of the two buffers are not equal.</exception>
-		public static byte[] Xor(byte[] buffer1, byte[] buffer2) {
-			if (buffer1.Length != buffer2.Length)
-				throw new ArgumentException("Length mismatched.");
-			var ret = new byte[buffer1.Length];
-			for (int i = 0; i < ret.Length; i++)
-				ret[i] = (byte)(buffer1[i] ^ buffer2[i]);
-			return ret;
-		}
+		public static byte[] SHA1(byte[] buffer) => Sha1Managed.ComputeHash(buffer);
 
 		/// <summary>
 		///     Compute the SHA256 hash of the input buffer.
 		/// </summary>
 		/// <param name="buffer">The input buffer.</param>
 		/// <returns>The SHA256 hash of the input buffer.</returns>
-		public static byte[] SHA256(byte[] buffer) {
-			var sha = new SHA256Managed();
-			return sha.ComputeHash(buffer);
-		}
+		public static byte[] SHA256(byte[] buffer) => Sha256Managed.ComputeHash(buffer);
 
 		/// <summary>
 		///     Encoding the buffer to a string using specified charset.
@@ -140,51 +120,19 @@ namespace Confuser.Core {
 		/// <param name="charset">The charset.</param>
 		/// <returns>The encoded string.</returns>
 		public static string EncodeString(byte[] buff, char[] charset) {
+			Buffer.Clear();
 			int current = buff[0];
-			var ret = new StringBuilder();
 			for (int i = 1; i < buff.Length; i++) {
 				current = (current << 8) + buff[i];
 				while (current >= charset.Length) {
-					ret.Append(charset[current % charset.Length]);
-					current /= charset.Length;
+					current = Math.DivRem(current, charset.Length, out int remainder);
+					Buffer.Append(charset[remainder]);
 				}
 			}
 			if (current != 0)
-				ret.Append(charset[current % charset.Length]);
-			return ret.ToString();
+				Buffer.Append(charset[current % charset.Length]);
+			return Buffer.ToString();
 		}
-
-		/// <summary>
-		///     Returns a new string in which all occurrences of a specified string in
-		///     <paramref name="str" /> are replaced with another specified string.
-		/// </summary>
-		/// <returns>
-		///     A <see cref="string" /> equivalent to <paramref name="str" /> but with all instances of
-		///     <paramref name="oldValue" />
-		///     replaced with <paramref name="newValue" />.
-		/// </returns>
-		/// <param name="str">A string to do the replace in. </param>
-		/// <param name="oldValue">A string to be replaced. </param>
-		/// <param name="newValue">A string to replace all occurrences of <paramref name="oldValue" />. </param>
-		/// <param name="comparison">One of the <see cref="StringComparison" /> values. </param>
-		/// <remarks>Adopted from http://stackoverflow.com/a/244933 </remarks>
-		public static string Replace(this string str, string oldValue, string newValue, StringComparison comparison) {
-			StringBuilder sb = new StringBuilder();
-
-			int previousIndex = 0;
-			int index = str.IndexOf(oldValue, comparison);
-			while (index != -1) {
-				sb.Append(str.Substring(previousIndex, index - previousIndex));
-				sb.Append(newValue);
-				index += oldValue.Length;
-				previousIndex = index;
-				index = str.IndexOf(oldValue, index, comparison);
-			}
-			sb.Append(str.Substring(previousIndex));
-
-			return sb.ToString();
-		}
-
 
 		/// <summary>
 		///     Encode the buffer to a hexadecimal string.
@@ -192,13 +140,12 @@ namespace Confuser.Core {
 		/// <param name="buff">The input buffer.</param>
 		/// <returns>A hexadecimal representation of input buffer.</returns>
 		public static string ToHexString(byte[] buff) {
-			var ret = new char[buff.Length * 2];
-			int i = 0;
+			Buffer.Clear();
 			foreach (byte val in buff) {
-				ret[i++] = hexCharset[val >> 4];
-				ret[i++] = hexCharset[val & 0xf];
+				Buffer.Append(hexCharset[val >> 4]);
+				Buffer.Append(hexCharset[val & 0xf]);
 			}
-			return new string(ret);
+			return Buffer.ToString();
 		}
 
 		/// <summary>
@@ -208,12 +155,17 @@ namespace Confuser.Core {
 		/// <param name="self">The list to remove from.</param>
 		/// <param name="match">The predicate that defines the conditions of the elements to remove.</param>
 		/// <returns><paramref name="self" /> for method chaining.</returns>
-		public static IList<T> RemoveWhere<T>(this IList<T> self, Predicate<T> match) {
+		public static void RemoveWhere<T>(this IList<T> self, Predicate<T> match) {
+			if (self is List<T> list) {
+				list.RemoveAll(match);
+				return;
+			}
+
+			// Switch to slow algorithm
 			for (int i = self.Count - 1; i >= 0; i--) {
 				if (match(self[i]))
 					self.RemoveAt(i);
 			}
-			return self;
 		}
 
 		/// <summary>

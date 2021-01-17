@@ -155,13 +155,6 @@ namespace Confuser.Renamer {
 			analyze.Analyze(this, context, ProtectionParameters.Empty, def, true);
 		}
 
-		public void SetNameId(uint id) {
-			for (int i = nameId.Length - 1; i >= 0; i--) {
-				nameId[i] = (byte)(id & 0xff);
-				id >>= 8;
-			}
-		}
-
 		void IncrementNameId() {
 			for (int i = nameId.Length - 1; i >= 0; i--) {
 				nameId[i]++;
@@ -225,7 +218,8 @@ namespace Confuser.Renamer {
 			if (_originalToObfuscatedNameMap.TryGetValue(name, out newName))
 				return newName;
 
-			byte[] hash = Utils.Xor(Utils.SHA1(Encoding.UTF8.GetBytes(name)), nameSeed);
+			byte[] hash = Utils.SHA1(Encoding.UTF8.GetBytes(name));
+			InplaceXor(hash, nameSeed);
 			while (true) {
 				newName = ObfuscateNameInternal(hash, mode);
 
@@ -250,6 +244,13 @@ namespace Confuser.Renamer {
 			}
 
 			return newName;
+		}
+
+		static void InplaceXor(byte[] buffer1, byte[] buffer2) {
+			if (buffer1.Length != buffer2.Length)
+				throw new ArgumentException("Length mismatch.");
+			for (int i = 0; i < buffer1.Length; i++)
+				buffer1[i] = (byte)(buffer1[i] ^ buffer2[i]);
 		}
 
 		public string RandomName() {

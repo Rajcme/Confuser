@@ -150,7 +150,7 @@ namespace Confuser.Protections.Constants {
 				if (buffIndex + 1 < moduleCtx.EncodedBuffer.Count && moduleCtx.EncodedBuffer[buffIndex + 1] == hi)
 					break;
 			} while (buffIndex >= 0);
-			
+
 			if (buffIndex == -1) {
 				buffIndex = moduleCtx.EncodedBuffer.Count;
 				moduleCtx.EncodedBuffer.Add(lo);
@@ -295,8 +295,8 @@ namespace Confuser.Protections.Constants {
 							// Prevent array length from being encoded
 							var arrLen = (int)instrs[i - 4].Operand;
 							if (ldc.ContainsKey(arrLen)) {
-								List<Tuple<MethodDef, Instruction>> list = ldc[arrLen];
-								list.RemoveWhere(entry => entry.Item2 == instrs[i - 4]);
+								var list = ldc[arrLen];
+								list.RemoveAll(entry => entry.Item2 == instrs[i - 4]);
 								if (list.Count == 0)
 									ldc.Remove(arrLen);
 							}
