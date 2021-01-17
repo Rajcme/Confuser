@@ -125,6 +125,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "345_RenameDynamicParameter"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "345_RenameDynamicParameter.Test", "Tests\345_RenameDynamicParameter.Test\345_RenameDynamicParameter.Test.csproj", "{0C8F49D8-BD68-420A-907D-031B83737C50}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodOverloading", "Tests\MethodOverloading\MethodOverloading.csproj", "{8624D935-D0E8-4783-8B28-A8359EEEC3CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MethodOverloading.Test", "Tests\MethodOverloading.Test\MethodOverloading.Test.csproj", "{46A884EA-3355-497D-9427-10D5B571E5D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
