@@ -1,7 +1,6 @@
 ﻿using System;
 
 namespace Confuser.Renamer {
-	[Flags]
 	public enum RenameMode {
 		Empty = 0x0,
 		Unicode = 0x1,

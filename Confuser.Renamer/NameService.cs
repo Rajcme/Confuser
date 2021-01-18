@@ -236,7 +236,7 @@ namespace Confuser.Renamer {
 				hash = Utils.SHA1(hash);
 			}
 
-			if ((mode & RenameMode.Decodable) != 0) {
+			if (mode == RenameMode.Decodable || mode == RenameMode.Sequential) {
 				_obfuscatedToOriginalNameMap.Add(newName, name);
 				_originalToObfuscatedNameMap.Add(name, newName);
 			}
