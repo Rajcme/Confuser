@@ -120,8 +120,9 @@ namespace Confuser.Renamer {
 			var param = ProtectionParameters.GetParameters(context, def);
 			if (param == null)
 				return null;
-			Dictionary<string, string> nameParam;
-			if (!param.TryGetValue(analyze.Parent, out nameParam))
+			if (analyze == null)
+				analyze = context.Pipeline.FindPhase<AnalyzePhase>();
+			if (!param.TryGetValue(analyze.Parent, out var nameParam))
 				return null;
 			return nameParam.GetValueOrDefault(name);
 		}
@@ -359,7 +360,29 @@ namespace Confuser.Renamer {
 				}
 			}
 
+			if (GetParam(dnlibDef, "shortNames")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true) {
+				result = ExtractShortName(result);
+			}
+
 			return result;
+		}
+
+		public static string ExtractShortName(string fullName) {
+			const string doubleParen = "::";
+			int doubleParenIndex = fullName.IndexOf(doubleParen);
+			if (doubleParenIndex != -1) {
+				int resultStringStartIndex = doubleParenIndex + doubleParen.Length;
+				int parenIndex = fullName.IndexOf('(', doubleParenIndex);
+				return fullName.Substring(resultStringStartIndex,
+					(parenIndex == -1 ? fullName.Length : parenIndex) - resultStringStartIndex);
+			}
+
+			int slashIndex = fullName.IndexOf('/');
+			if (slashIndex != -1) {
+				return fullName.Substring(slashIndex + 1);
+			}
+
+			return fullName;
 		}
 	}
 }

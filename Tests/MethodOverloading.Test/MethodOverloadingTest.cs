@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Confuser.Core;
 using Confuser.Core.Project;
@@ -9,11 +10,12 @@ namespace MethodOverloading.Test {
 	public class MethodOverloadingTest : TestBase {
 		public MethodOverloadingTest(ITestOutputHelper outputHelper) : base(outputHelper) { }
 
-		[Fact]
+		[Theory]
+		[MemberData(nameof(MethodOverloadingData))]
 		[Trait("Category", "Protection")]
 		[Trait("Protection", "rename")]
 		[Trait("Issue", "https://github.com/mkaring/ConfuserEx/issues/230")]
-		public async Task MethodOverloading() =>
+		public async Task MethodOverloading(bool shortNames) =>
 			await Run(
 				"MethodOverloading.exe",
 				new [] {
@@ -28,7 +30,10 @@ namespace MethodOverloading.Test {
 					"class4",
 					"class5"
 				},
-				new SettingItem<Protection>("rename") { ["mode"] = "decodable" }
+				new SettingItem<Protection>("rename") { ["mode"] = "decodable", ["shortNames"] = shortNames.ToString().ToLowerInvariant() },
+				shortNames ? "_shortnames" : "_fullnames"
 			);
+
+		public static IEnumerable<object[]> MethodOverloadingData => new[] { new object[] {false}, new object[] {true}};
 	}
 }

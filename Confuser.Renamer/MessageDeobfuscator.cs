@@ -5,13 +5,16 @@ using System.Text.RegularExpressions;
 
 namespace Confuser.Renamer {
 	public class MessageDeobfuscator {
-		static readonly Regex MapSymbolMatcher = new Regex("_[a-zA-Z0-9]+", RegexOptions.Compiled);
-		static readonly Regex PasswordSymbolMatcher = new Regex("[a-zA-Z0-9_$]{23,}", RegexOptions.Compiled);
+		static readonly Regex MapSymbolMatcher = new Regex("_[a-zA-Z0-9]+");
+		static readonly Regex PasswordSymbolMatcher = new Regex("[a-zA-Z0-9_$]{23,}");
 
 		readonly Dictionary<string, string> _symbolMap;
 		readonly ReversibleRenamer _renamer;
 
 		public static MessageDeobfuscator Load(string symbolMapFileName) {
+			if (symbolMapFileName is null)
+				throw new ArgumentNullException(nameof(symbolMapFileName));
+
 			var symbolMap = new Dictionary<string, string>();
 			using (var reader = new StreamReader(File.OpenRead(symbolMapFileName))) {
 				var line = reader.ReadLine();
@@ -42,36 +45,18 @@ namespace Confuser.Renamer {
 		string DecodeSymbolMap(Match match) {
 			var symbol = match.Value;
 			if (_symbolMap.TryGetValue(symbol, out string result))
-				return ExtractShortName(result);
-			return ExtractShortName(symbol);
+				return NameService.ExtractShortName(result);
+			return NameService.ExtractShortName(symbol);
 		}
 
 		string DecodeSymbolPassword(Match match) {
 			var sym = match.Value;
 			try {
-				return ExtractShortName(_renamer.Decrypt(sym));
+				return NameService.ExtractShortName(_renamer.Decrypt(sym));
 			}
 			catch {
 				return sym;
 			}
-		}
-
-		string ExtractShortName(string fullName) {
-			const string doubleParen = "::";
-			int doubleParenIndex = fullName.IndexOf(doubleParen);
-			if (doubleParenIndex != -1) {
-				int resultStringStartIndex = doubleParenIndex + doubleParen.Length;
-				int parenIndex = fullName.IndexOf('(', doubleParenIndex);
-				return fullName.Substring(resultStringStartIndex,
-					(parenIndex == -1 ? fullName.Length : parenIndex) - resultStringStartIndex);
-			}
-
-			int slashIndex = fullName.IndexOf('/');
-			if (slashIndex != -1) {
-				return fullName.Substring(slashIndex + 1);
-			}
-
-			return fullName;
 		}
 	}
 }
