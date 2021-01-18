@@ -59,7 +59,7 @@ namespace Confuser.Core.Services {
 						}
 					}
 				}
-				members.RemoveAll(def => def is FieldDef fieldDef && fieldDef.IsLiteral);
+				members.RemoveWhere(def => def is FieldDef && ((FieldDef)def).IsLiteral);
 
 				Debug.Assert(decomp != null);
 				return Tuple.Create(decomp, members);
