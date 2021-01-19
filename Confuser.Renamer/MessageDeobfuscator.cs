@@ -45,14 +45,14 @@ namespace Confuser.Renamer {
 		string DecodeSymbolMap(Match match) {
 			var symbol = match.Value;
 			if (_symbolMap.TryGetValue(symbol, out string result))
-				return NameService.ExtractShortName(result);
-			return NameService.ExtractShortName(symbol);
+				return NameService.ExtractShortName(result, false);
+			return NameService.ExtractShortName(symbol, false);
 		}
 
 		string DecodeSymbolPassword(Match match) {
 			var sym = match.Value;
 			try {
-				return NameService.ExtractShortName(_renamer.Decrypt(sym));
+				return NameService.ExtractShortName(_renamer.Decrypt(sym), false);
 			}
 			catch {
 				return sym;

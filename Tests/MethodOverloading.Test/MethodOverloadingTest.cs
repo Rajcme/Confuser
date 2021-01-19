@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Confuser.Core;
 using Confuser.Core.Project;
@@ -31,7 +33,29 @@ namespace MethodOverloading.Test {
 					"class5"
 				},
 				new SettingItem<Protection>("rename") { ["mode"] = "decodable", ["shortNames"] = shortNames.ToString().ToLowerInvariant() },
-				shortNames ? "_shortnames" : "_fullnames"
+				shortNames ? "_shortnames" : "_fullnames",
+				seed: "seed",
+				postProcessAction: outputPath => {
+					var symbolsPath = Path.Combine(outputPath, "symbols.map");
+					var symbols = File.ReadAllLines(symbolsPath).Select(line => {
+						var parts = line.Split('\t');
+						return new KeyValuePair<string, string>(parts[0], parts[1]);
+					}).ToDictionary(keyValue => keyValue.Key, keyValue => keyValue.Value);
+
+					if (shortNames) {
+						Assert.Equal("Class", symbols["_OatkF4GhWlgOakbgdlaLpqEglhm"]);
+						Assert.Equal("NestedClass", symbols["_GYHfKMUMLLO9oVLM117IvfCdmUC"]);
+						Assert.Equal("OverloadedMethod", symbols["_phF8iy7Y79cwt3EaAFmJzW2bGch"]);
+					}
+					else {
+						Assert.Equal("MethodOverloading.Class", symbols["_iyWU2GdYVZxajP8BQlt8KKTy6qQ"]);
+						Assert.Equal("MethodOverloading.Program/NestedClass", symbols["_CZIbNVHU7wPJyGhgOcTnIUsFtC0"]);
+						Assert.Equal("MethodOverloading.Program::OverloadedMethod(System.Object[])", symbols["_LzCBuBOSn49xbtKNsjuJxQZPIEW"]);
+						Assert.Equal("MethodOverloading.Program::OverloadedMethod(System.String)", symbols["_ywSbkiShk8k3qj7bBrEWEUfs9Km"]);
+					}
+
+					return Task.Delay(0);
+				}
 			);
 
 		public static IEnumerable<object[]> MethodOverloadingData => new[] { new object[] {false}, new object[] {true}};

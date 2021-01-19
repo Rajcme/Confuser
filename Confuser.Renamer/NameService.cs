@@ -361,13 +361,13 @@ namespace Confuser.Renamer {
 			}
 
 			if (GetParam(dnlibDef, "shortNames")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true) {
-				result = ExtractShortName(result);
+				result = ExtractShortName(result, true);
 			}
 
 			return result;
 		}
 
-		public static string ExtractShortName(string fullName) {
+		public static string ExtractShortName(string fullName, bool trimNamespace) {
 			const string doubleParen = "::";
 			int doubleParenIndex = fullName.IndexOf(doubleParen);
 			if (doubleParenIndex != -1) {
@@ -380,6 +380,11 @@ namespace Confuser.Renamer {
 			int slashIndex = fullName.IndexOf('/');
 			if (slashIndex != -1) {
 				return fullName.Substring(slashIndex + 1);
+			}
+
+			if (trimNamespace) {
+				int dotIndex = fullName.IndexOf('.');
+				return dotIndex != -1 ? fullName.Substring(dotIndex + 1) : fullName;
 			}
 
 			return fullName;

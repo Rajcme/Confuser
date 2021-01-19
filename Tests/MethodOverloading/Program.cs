@@ -43,7 +43,7 @@ namespace MethodOverloading {
 	}
 
 	public class Program {
-		public class Test {
+		public class NestedClass {
 			public override string ToString() => "test";
 		}
 
@@ -55,7 +55,7 @@ namespace MethodOverloading {
 
 		public static object OverloadedMethod(bool cond, float param1, double param2) => cond ? param1 : param2;
 
-		public static Test OverloadedMethod(Test test) => test;
+		public static NestedClass OverloadedMethod(NestedClass nestedClass) => nestedClass;
 
 		static int Main(string[] args) {
 			Console.WriteLine("START");
@@ -63,7 +63,7 @@ namespace MethodOverloading {
 			Console.WriteLine(OverloadedMethod("Hello world"));
 			Console.WriteLine(OverloadedMethod(new object[] { "object" }));
 			Console.WriteLine(OverloadedMethod(false, 1.0f, 2.0));
-			Console.WriteLine(OverloadedMethod(new Test()));
+			Console.WriteLine(OverloadedMethod(new NestedClass()));
 			Console.WriteLine(new Class().Method("class"));
 			Console.WriteLine(new Class2().Method2("class2"));
 			Console.WriteLine(new Class3().Method3("class3"));
