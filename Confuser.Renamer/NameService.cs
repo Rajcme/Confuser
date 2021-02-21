@@ -233,35 +233,32 @@ namespace Confuser.Renamer {
 					throw new ArgumentException("Password not provided for reversible renaming.");
 				newName = reversibleRenamer.Encrypt(name);
 			}
-			else
+			else if (!_originalToObfuscatedNameMap.TryGetValue(name, out newName))
 			{
-				if (!_originalToObfuscatedNameMap.TryGetValue(name, out newName))
-				{
-					byte[] hash = Utils.Xor(Utils.SHA1(Encoding.UTF8.GetBytes(name)), nameSeed);
-					while (true) {
-						newName = ObfuscateNameInternal(hash, mode);
+				byte[] hash = Utils.Xor(Utils.SHA1(Encoding.UTF8.GetBytes(name)), nameSeed);
+				while (true) {
+					newName = ObfuscateNameInternal(hash, mode);
 
-						try {
-							if (!(format is null))
-								newName = string.Format(CultureInfo.InvariantCulture, format, newName);
-						}
-						catch (FormatException ex) {
-							throw new ArgumentException(
-								string.Format(CultureInfo.InvariantCulture,
-									Resources.NameService_ObfuscateName_InvalidFormat, format),
-								nameof(format), ex);
-						}
-
-						if (!identifiers.Contains(MakeGenericName(newName, genericParamsCount))
-						    && !_obfuscatedToOriginalNameMap.ContainsKey(newName))
-								break;
-						hash = Utils.SHA1(hash);
+					try {
+						if (!(format is null))
+							newName = string.Format(CultureInfo.InvariantCulture, format, newName);
+					}
+					catch (FormatException ex) {
+						throw new ArgumentException(
+							string.Format(CultureInfo.InvariantCulture,
+								Resources.NameService_ObfuscateName_InvalidFormat, format),
+							nameof(format), ex);
 					}
 
-					if (mode == RenameMode.Decodable || mode == RenameMode.Sequential) {
-						_obfuscatedToOriginalNameMap.Add(newName, name);
-						_originalToObfuscatedNameMap.Add(name, newName);
-					}
+					if (!identifiers.Contains(MakeGenericName(newName, genericParamsCount))
+					    && !_obfuscatedToOriginalNameMap.ContainsKey(newName))
+						break;
+					hash = Utils.SHA1(hash);
+				}
+
+				if (mode == RenameMode.Decodable || mode == RenameMode.Sequential) {
+					_obfuscatedToOriginalNameMap.Add(newName, name);
+					_originalToObfuscatedNameMap.Add(name, newName);
 				}
 			}
 

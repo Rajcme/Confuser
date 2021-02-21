@@ -37,7 +37,7 @@ namespace Confuser.Renamer.Analyzers {
 					if (!baseUnderCtrl && interfaceUnderCtrl || !service.CanRename(slot.MethodDef)) {
 						service.SetCanRename(slot.Overrides.MethodDef, false);
 					}
-					else if (baseUnderCtrl && !interfaceUnderCtrl || !service.CanRename(slot.Overrides.MethodDef)) {
+					else if ((baseUnderCtrl && !interfaceUnderCtrl) || (!service.CanRename(slot.Overrides.MethodDef))) {
 						service.SetCanRename(slot.MethodDef, false);
 					}
 
