@@ -187,62 +187,85 @@ namespace Confuser.Renamer {
 			}
 		}
 
-		public string ObfuscateName(string name, RenameMode mode) => ObfuscateName(null, name, mode);
+		string ParseGenericName(string name, out int count) {
+			int graveIndex = name.LastIndexOf('`');
+			if (graveIndex != -1) {
+				if (int.TryParse(name.Substring(graveIndex + 1), out int c)) {
+					count = c;
+					return name.Substring(0, graveIndex);
+				}
+			}
+			count = 0;
+			return name;
+		}
+
+		string MakeGenericName(string name, int count) => count == 0 ? name : $"{name}`{count}";
+
+		public string ObfuscateName(string name, RenameMode mode) => ObfuscateName(null, name, mode, false);
 
 		public string ObfuscateName(IDnlibDef dnlibDef, RenameMode mode) {
 			var originalFullName = GetOriginalFullName(dnlibDef);
-			return ObfuscateName(null, originalFullName, mode);
+			bool preserveGenericParams = GetParam(dnlibDef, "preserveGenericParams")
+				?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+			return ObfuscateName(null, originalFullName, mode, preserveGenericParams);
 		}
 
-		public string ObfuscateName(string format, string name, RenameMode mode) {
-			string newName;
-
-			if (string.IsNullOrEmpty(name))
-				return string.Empty;
-
-			if (mode == RenameMode.Empty)
-				return "";
-			if (mode == RenameMode.Debug || mode == RenameMode.Retain) {
-				// When flattening there are issues, in case there is a . in the name of the assembly.
-				newName = name.Replace('.', '_');
-				return mode == RenameMode.Debug ? "_" + newName : newName;
+		public string ObfuscateName(string format, string name, RenameMode mode, bool preserveGenericParams = false) {
+			int genericParamsCount = 0;
+			if (preserveGenericParams) {
+				name = ParseGenericName(name, out genericParamsCount);
 			}
 
-			if (mode == RenameMode.Reversible) {
+			string newName;
+
+			if (string.IsNullOrEmpty(name) || mode == RenameMode.Empty)
+				return string.Empty;
+
+			if (mode == RenameMode.Debug || mode == RenameMode.Retain)
+			{
+				// When flattening there are issues, in case there is a . in the name of the assembly.
+				newName = name.Replace('.', '_');
+				newName = mode == RenameMode.Debug ? "_" + newName : newName;
+			}
+			else if (mode == RenameMode.Reversible)
+			{
 				if (reversibleRenamer == null)
 					throw new ArgumentException("Password not provided for reversible renaming.");
 				newName = reversibleRenamer.Encrypt(name);
-				return newName;
 			}
+			else
+			{
+				if (!_originalToObfuscatedNameMap.TryGetValue(name, out newName))
+				{
+					byte[] hash = Utils.Xor(Utils.SHA1(Encoding.UTF8.GetBytes(name)), nameSeed);
+					while (true) {
+						newName = ObfuscateNameInternal(hash, mode);
 
-			if (_originalToObfuscatedNameMap.TryGetValue(name, out newName))
-				return newName;
+						try {
+							if (!(format is null))
+								newName = string.Format(CultureInfo.InvariantCulture, format, newName);
+						}
+						catch (FormatException ex) {
+							throw new ArgumentException(
+								string.Format(CultureInfo.InvariantCulture,
+									Resources.NameService_ObfuscateName_InvalidFormat, format),
+								nameof(format), ex);
+						}
 
-			byte[] hash = Utils.Xor(Utils.SHA1(Encoding.UTF8.GetBytes(name)), nameSeed);
-			while (true) {
-				newName = ObfuscateNameInternal(hash, mode);
+						if (!identifiers.Contains(MakeGenericName(newName, genericParamsCount))
+						    && !_obfuscatedToOriginalNameMap.ContainsKey(newName))
+								break;
+						hash = Utils.SHA1(hash);
+					}
 
-				try {
-					if (!(format is null))
-						newName = string.Format(CultureInfo.InvariantCulture, format, newName);
+					if (mode == RenameMode.Decodable || mode == RenameMode.Sequential) {
+						_obfuscatedToOriginalNameMap.Add(newName, name);
+						_originalToObfuscatedNameMap.Add(name, newName);
+					}
 				}
-				catch (FormatException ex) {
-					throw new ArgumentException(
-						string.Format(CultureInfo.InvariantCulture, Resources.NameService_ObfuscateName_InvalidFormat, format),
-						nameof(format), ex);
-				}
-
-				if (!identifiers.Contains(newName) && !_obfuscatedToOriginalNameMap.ContainsKey(newName))
-					break;
-				hash = Utils.SHA1(hash);
 			}
 
-			if (mode == RenameMode.Decodable || mode == RenameMode.Sequential) {
-				_obfuscatedToOriginalNameMap.Add(newName, name);
-				_originalToObfuscatedNameMap.Add(name, newName);
-			}
-
-			return newName;
+			return MakeGenericName(newName, genericParamsCount);
 		}
 
 		public string RandomName() {

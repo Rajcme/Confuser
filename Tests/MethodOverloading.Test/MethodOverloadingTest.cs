@@ -17,7 +17,7 @@ namespace MethodOverloading.Test {
 		[Trait("Category", "Protection")]
 		[Trait("Protection", "rename")]
 		[Trait("Issue", "https://github.com/mkaring/ConfuserEx/issues/230")]
-		public async Task MethodOverloading(bool shortNames) =>
+		public async Task MethodOverloading(bool shortNames, bool preserveGenericParams) =>
 			await Run(
 				"MethodOverloading.exe",
 				new [] {
@@ -26,14 +26,19 @@ namespace MethodOverloading.Test {
 					"object",
 					"2",
 					"test",
+					"5",
 					"class",
 					"class2",
 					"class3",
 					"class4",
 					"class5"
 				},
-				new SettingItem<Protection>("rename") { ["mode"] = "decodable", ["shortNames"] = shortNames.ToString().ToLowerInvariant() },
-				shortNames ? "_shortnames" : "_fullnames",
+				new SettingItem<Protection>("rename") {
+					["mode"] = "decodable",
+					["shortNames"] = shortNames.ToString().ToLowerInvariant(),
+					["preserveGenericParams"] = preserveGenericParams.ToString().ToLowerInvariant()
+				},
+				(shortNames ? "_shortnames" : "_fullnames") + (preserveGenericParams ? "_preserveGenericParams" : ""),
 				seed: "seed",
 				postProcessAction: outputPath => {
 					var symbolsPath = Path.Combine(outputPath, "symbols.map");
@@ -58,6 +63,12 @@ namespace MethodOverloading.Test {
 				}
 			);
 
-		public static IEnumerable<object[]> MethodOverloadingData => new[] { new object[] {false}, new object[] {true}};
+		public static IEnumerable<object[]> MethodOverloadingData() {
+			foreach (var shortNames in new[] {false, true}) {
+				foreach (var preserveGenericParams in new[] {false, true}) {
+					yield return new object[] {shortNames, preserveGenericParams};
+				}
+			}
+		}
 	}
 }

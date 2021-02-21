@@ -57,6 +57,8 @@ namespace MethodOverloading {
 
 		public static NestedClass OverloadedMethod(NestedClass nestedClass) => nestedClass;
 
+		public static T OverloadedMethod<T>(T param) => param;
+
 		static int Main(string[] args) {
 			Console.WriteLine("START");
 			Console.WriteLine(OverloadedMethod(1));
@@ -64,6 +66,7 @@ namespace MethodOverloading {
 			Console.WriteLine(OverloadedMethod(new object[] { "object" }));
 			Console.WriteLine(OverloadedMethod(false, 1.0f, 2.0));
 			Console.WriteLine(OverloadedMethod(new NestedClass()));
+			Console.WriteLine(OverloadedMethod((byte)5));
 			Console.WriteLine(new Class().Method("class"));
 			Console.WriteLine(new Class2().Method2("class2"));
 			Console.WriteLine(new Class3().Method3("class3"));
