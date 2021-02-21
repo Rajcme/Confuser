@@ -369,7 +369,7 @@ namespace Confuser.Renamer {
 
 		public static string ExtractShortName(string fullName, bool trimNamespace) {
 			const string doubleParen = "::";
-			int doubleParenIndex = fullName.IndexOf(doubleParen);
+			int doubleParenIndex = fullName.IndexOf(doubleParen, StringComparison.Ordinal);
 			if (doubleParenIndex != -1) {
 				int resultStringStartIndex = doubleParenIndex + doubleParen.Length;
 				int parenIndex = fullName.IndexOf('(', doubleParenIndex);
