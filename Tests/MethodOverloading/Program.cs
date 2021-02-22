@@ -7,9 +7,12 @@ namespace MethodOverloading {
 
 	public class BaseClass {
 		public string Method(string param) => param;
+
+		public virtual string VirtualMethod() => "BaseClassVirtualMethod";
 	}
 
 	public class Class : BaseClass, IInterface {
+		public override string VirtualMethod() => "ClassVirtualMethod";
 	}
 
 	public interface IInterface2<Result> {
@@ -72,6 +75,10 @@ namespace MethodOverloading {
 			Console.WriteLine(new Class3().Method3("class3"));
 			Console.WriteLine(new Class4().Method3("class4"));
 			Console.WriteLine(new Class5().Method5("class5"));
+			Console.WriteLine(new BaseClass().VirtualMethod());
+			BaseClass baseClass = new Class();
+			Console.WriteLine(baseClass.VirtualMethod());
+			Console.WriteLine(new Class().VirtualMethod());
 			Console.WriteLine("END");
 			return 42;
 		}

@@ -31,7 +31,10 @@ namespace MethodOverloading.Test {
 					"class2",
 					"class3",
 					"class4",
-					"class5"
+					"class5",
+					"BaseClassVirtualMethod",
+					"ClassVirtualMethod",
+					"ClassVirtualMethod"
 				},
 				new SettingItem<Protection>("rename") {
 					["mode"] = "decodable",
