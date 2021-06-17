@@ -99,6 +99,9 @@ namespace Confuser.Core.Helpers {
 
 			newMethodDef.Signature = ctx.Importer.Import(methodDef.Signature);
 			newMethodDef.Parameters.UpdateParameterTypes();
+			
+            		foreach (var paramDef in methodDef.ParamDefs)
+               			newMethodDef.ParamDefs.Add(new ParamDefUser(paramDef.Name, paramDef.Sequence));
 
 			if (methodDef.ImplMap != null)
 				newMethodDef.ImplMap = new ImplMapUser(new ModuleRefUser(ctx.TargetModule, methodDef.ImplMap.Module.Name), methodDef.ImplMap.Name, methodDef.ImplMap.Attributes);
