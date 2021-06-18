@@ -157,7 +157,6 @@ namespace Confuser.Core.Helpers {
 			{
 				if (instr.Operand != null && bodyMap.ContainsKey(instr.Operand))
 					instr.Operand = bodyMap[instr.Operand];
-
 				else if (instr.Operand is Instruction[] instructions)
 					instr.Operand = instructions.Select(target => (Instruction) bodyMap[target]).ToArray();
 			}
