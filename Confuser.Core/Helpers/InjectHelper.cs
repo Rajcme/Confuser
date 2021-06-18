@@ -109,15 +109,19 @@ namespace Confuser.Core.Helpers {
 			foreach (CustomAttribute ca in methodDef.CustomAttributes)
 				newMethodDef.CustomAttributes.Add(new CustomAttribute((ICustomAttributeType)ctx.Importer.Import(ca.Constructor)));
 
-			if (!methodDef.HasBody) 
-				return;
-			
+			if (methodDef.HasBody)
+				CopyMethodBody(methodDef, ctx, newMethodDef);
+		}
+		
+		static void CopyMethodBody(MethodDef methodDef, InjectContext ctx, MethodDef newMethodDef)
+		{
 			newMethodDef.Body = new CilBody(methodDef.Body.InitLocals, new List<Instruction>(),
 				new List<ExceptionHandler>(), new List<Local>()) {MaxStack = methodDef.Body.MaxStack};
 
 			var bodyMap = new Dictionary<object, object>();
 
-			foreach (Local local in methodDef.Body.Variables) {
+			foreach (Local local in methodDef.Body.Variables)
+			{
 				var newLocal = new Local(ctx.Importer.Import(local.Type));
 				newMethodDef.Body.Variables.Add(newLocal);
 				newLocal.Name = local.Name;
@@ -125,7 +129,8 @@ namespace Confuser.Core.Helpers {
 				bodyMap[local] = newLocal;
 			}
 
-			foreach (Instruction instr in methodDef.Body.Instructions) {
+			foreach (Instruction instr in methodDef.Body.Instructions)
+			{
 				var newInstr = new Instruction(instr.OpCode, instr.Operand)
 				{
 					SequencePoint = instr.SequencePoint
@@ -148,22 +153,24 @@ namespace Confuser.Core.Helpers {
 				bodyMap[instr] = newInstr;
 			}
 
-			foreach (Instruction instr in newMethodDef.Body.Instructions) {
+			foreach (Instruction instr in newMethodDef.Body.Instructions)
+			{
 				if (instr.Operand != null && bodyMap.ContainsKey(instr.Operand))
 					instr.Operand = bodyMap[instr.Operand];
 
 				else if (instr.Operand is Instruction[] instructions)
-					instr.Operand = instructions.Select(target => (Instruction)bodyMap[target]).ToArray();
+					instr.Operand = instructions.Select(target => (Instruction) bodyMap[target]).ToArray();
 			}
 
 			foreach (ExceptionHandler eh in methodDef.Body.ExceptionHandlers)
-				newMethodDef.Body.ExceptionHandlers.Add(new ExceptionHandler(eh.HandlerType) {
-					CatchType = eh.CatchType == null ? null : (ITypeDefOrRef)ctx.Importer.Import(eh.CatchType),
-					TryStart = (Instruction)bodyMap[eh.TryStart],
-					TryEnd = (Instruction)bodyMap[eh.TryEnd],
-					HandlerStart = (Instruction)bodyMap[eh.HandlerStart],
-					HandlerEnd = (Instruction)bodyMap[eh.HandlerEnd],
-					FilterStart = eh.FilterStart == null ? null : (Instruction)bodyMap[eh.FilterStart]
+				newMethodDef.Body.ExceptionHandlers.Add(new ExceptionHandler(eh.HandlerType)
+				{
+					CatchType = eh.CatchType == null ? null : ctx.Importer.Import(eh.CatchType),
+					TryStart = (Instruction) bodyMap[eh.TryStart],
+					TryEnd = (Instruction) bodyMap[eh.TryEnd],
+					HandlerStart = (Instruction) bodyMap[eh.HandlerStart],
+					HandlerEnd = (Instruction) bodyMap[eh.HandlerEnd],
+					FilterStart = eh.FilterStart == null ? null : (Instruction) bodyMap[eh.FilterStart]
 				});
 
 			newMethodDef.Body.SimplifyMacros(newMethodDef.Parameters);
