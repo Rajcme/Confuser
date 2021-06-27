@@ -369,10 +369,11 @@ namespace Confuser.Renamer {
 
 		public void SetIsRenamed(IDnlibDef def) => context.Annotations.Set(def, IsRenamedKey, true);
 
-		string GetSimplifiedFullName(IDnlibDef dnlibDef, bool withoutParams = false) {
+		string GetSimplifiedFullName(IDnlibDef dnlibDef, bool forceShortNames = false) {
 			string result;
 
-			var shortNames = GetParam(dnlibDef, "shortNames")?.Equals("true", StringComparison.OrdinalIgnoreCase) ==
+			var shortNames = forceShortNames ||
+			                 GetParam(dnlibDef, "shortNames")?.Equals("true", StringComparison.OrdinalIgnoreCase) ==
 			                 true;
 			if (shortNames) {
 				result = dnlibDef.Name;
@@ -385,7 +386,7 @@ namespace Confuser.Renamer {
 					resultBuilder.Append(dnlibDef.Name);
 
 					resultBuilder.Append('(');
-					if (!withoutParams && methodDef.Signature is MethodSig methodSig) {
+					if (methodDef.Signature is MethodSig methodSig) {
 						var methodParams = methodSig.Params;
 						for (var index = 0; index < methodParams.Count; index++) {
 							resultBuilder.Append(methodParams[index]);
