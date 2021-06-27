@@ -139,6 +139,10 @@ namespace Confuser.Renamer {
 			RenameMode original = GetRenameMode(obj);
 			if (original < val)
 				context.Annotations.Set(obj, RenameModeKey, val);
+			if (val <= RenameMode.Reflection && obj is IDnlibDef dnlibDef) {
+				string nameWithoutParams = GetSimplifiedFullName(dnlibDef, true);
+				SetOriginalName(dnlibDef, nameWithoutParams);
+			}
 		}
 
 		public void AddReference<T>(T obj, INameReference<T> reference) {
@@ -274,17 +278,11 @@ namespace Confuser.Renamer {
 		}
 
 		public void SetOriginalName(IDnlibDef dnlibDef, string newFullName = null) {
-			string fullName;
-			if (newFullName == null) {
-				AddReservedIdentifier(dnlibDef.Name);
-				fullName = GetSimplifiedFullName(dnlibDef);
-				if (dnlibDef is TypeDef typeDef) {
-					AddReservedIdentifier(typeDef.Namespace);
-				}
+			AddReservedIdentifier(dnlibDef.Name);
+			if (dnlibDef is TypeDef typeDef) {
+				AddReservedIdentifier(typeDef.Namespace);
 			}
-			else {
-				fullName = newFullName;
-			}
+			string fullName = newFullName ?? GetSimplifiedFullName(dnlibDef);
 			context.Annotations.Set(dnlibDef, OriginalFullNameKey, fullName);
 		}
 
@@ -371,8 +369,17 @@ namespace Confuser.Renamer {
 
 		public void SetIsRenamed(IDnlibDef def) => context.Annotations.Set(def, IsRenamedKey, true);
 
-		string GetSimplifiedFullName(IDnlibDef dnlibDef) {
-			string result = dnlibDef.FullName;
+		string GetSimplifiedFullName(IDnlibDef dnlibDef, bool withoutParams = false) {
+			string result;
+
+			if (withoutParams && dnlibDef is MethodDef methodDef) {
+				result = FullNameFactory.MethodFullName(methodDef.DeclaringType2?.FullName, methodDef.Name,
+					new MethodSig(), null, null, methodDef);
+			}
+			else {
+				result = dnlibDef.FullName;
+			}
+
 			if (!(dnlibDef is TypeDef)) {
 				int lastSpaceIndex = result.LastIndexOf(' ');
 				if (lastSpaceIndex != -1) {
