@@ -45,18 +45,36 @@ namespace Confuser.Renamer {
 		string DecodeSymbolMap(Match match) {
 			var symbol = match.Value;
 			if (_symbolMap.TryGetValue(symbol, out string result))
-				return NameService.ExtractShortName(result, false);
-			return NameService.ExtractShortName(symbol, false);
+				return ExtractShortName(result);
+			return ExtractShortName(symbol);
 		}
 
 		string DecodeSymbolPassword(Match match) {
 			var sym = match.Value;
 			try {
-				return NameService.ExtractShortName(_renamer.Decrypt(sym), false);
+				return ExtractShortName(_renamer.Decrypt(sym));
 			}
 			catch {
 				return sym;
 			}
+		}
+
+		static string ExtractShortName(string fullName) {
+			const string doubleParen = "::";
+			int doubleParenIndex = fullName.IndexOf(doubleParen, StringComparison.Ordinal);
+			if (doubleParenIndex != -1) {
+				int resultStringStartIndex = doubleParenIndex + doubleParen.Length;
+				int parenIndex = fullName.IndexOf('(', doubleParenIndex);
+				return fullName.Substring(resultStringStartIndex,
+					(parenIndex == -1 ? fullName.Length : parenIndex) - resultStringStartIndex);
+			}
+
+			int slashIndex = fullName.IndexOf('/');
+			if (slashIndex != -1) {
+				return fullName.Substring(slashIndex + 1);
+			}
+
+			return fullName;
 		}
 	}
 }

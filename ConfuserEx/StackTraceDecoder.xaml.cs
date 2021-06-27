@@ -22,7 +22,7 @@ namespace ConfuserEx {
 		void Decode_Click(object sender, RoutedEventArgs e) {
 			bool error = false;
 			if (optSym.IsChecked ?? true) {
-				var path = PathBox.Text;
+				var path = PathBox.Text.Trim(' ', '"');
 				string shortPath = path;
 				if (path.Length > 35)
 					shortPath = "..." + path.Substring(path.Length - 35, 35);

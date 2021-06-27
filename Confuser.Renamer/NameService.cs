@@ -372,49 +372,38 @@ namespace Confuser.Renamer {
 		string GetSimplifiedFullName(IDnlibDef dnlibDef, bool withoutParams = false) {
 			string result;
 
-			if (withoutParams && dnlibDef is MethodDef methodDef) {
-				result = FullNameFactory.MethodFullName(methodDef.DeclaringType2?.FullName, methodDef.Name,
-					new MethodSig(), null, null, methodDef);
+			var shortNames = GetParam(dnlibDef, "shortNames")?.Equals("true", StringComparison.OrdinalIgnoreCase) ==
+			                 true;
+			if (shortNames) {
+				result = dnlibDef.Name;
 			}
 			else {
-				result = dnlibDef.FullName;
-			}
+				if (dnlibDef is MethodDef methodDef) {
+					var resultBuilder = new StringBuilder();
+					resultBuilder.Append(methodDef.DeclaringType2?.FullName);
+					resultBuilder.Append("::");
+					resultBuilder.Append(dnlibDef.Name);
 
-			if (!(dnlibDef is TypeDef)) {
-				int lastSpaceIndex = result.LastIndexOf(' ');
-				if (lastSpaceIndex != -1) {
-					result = result.Substring(lastSpaceIndex + 1);
+					resultBuilder.Append('(');
+					if (!withoutParams && methodDef.Signature is MethodSig methodSig) {
+						var methodParams = methodSig.Params;
+						for (var index = 0; index < methodParams.Count; index++) {
+							resultBuilder.Append(methodParams[index]);
+							if (index < methodParams.Count - 1) {
+								resultBuilder.Append(',');
+							}
+						}
+					}
+					resultBuilder.Append(')');
+
+					result = resultBuilder.ToString();
+				}
+				else {
+					result = dnlibDef.FullName;
 				}
 			}
 
-			if (GetParam(dnlibDef, "shortNames")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true) {
-				result = ExtractShortName(result, true);
-			}
-
 			return result;
-		}
-
-		public static string ExtractShortName(string fullName, bool trimNamespace) {
-			const string doubleParen = "::";
-			int doubleParenIndex = fullName.IndexOf(doubleParen, StringComparison.Ordinal);
-			if (doubleParenIndex != -1) {
-				int resultStringStartIndex = doubleParenIndex + doubleParen.Length;
-				int parenIndex = fullName.IndexOf('(', doubleParenIndex);
-				return fullName.Substring(resultStringStartIndex,
-					(parenIndex == -1 ? fullName.Length : parenIndex) - resultStringStartIndex);
-			}
-
-			int slashIndex = fullName.IndexOf('/');
-			if (slashIndex != -1) {
-				return fullName.Substring(slashIndex + 1);
-			}
-
-			if (trimNamespace) {
-				int dotIndex = fullName.IndexOf('.');
-				return dotIndex != -1 ? fullName.Substring(dotIndex + 1) : fullName;
-			}
-
-			return fullName;
 		}
 	}
 }
