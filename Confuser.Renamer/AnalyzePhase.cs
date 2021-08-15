@@ -151,22 +151,21 @@ namespace Confuser.Renamer {
 			else if (def is EventDef)
 				Analyze(service, context, parameters, (EventDef)def);
 			else if (def is ModuleDef) {
-				var generatedPassword = parameters.GetParameter<bool>(context, def, "generatePassword");
-				var password = parameters.GetParameter<string>(context, def, "password");
-				if (generatedPassword || password != null) {
-					var reversibleRenamer = service.reversibleRenamer;
-					if (reversibleRenamer == null) {
-						if (generatedPassword) {
-							password = context.Registry.GetService<IRandomService>().SeedString;
-						}
-						string dir = context.OutputDirectory;
-						string path = Path.GetFullPath(Path.Combine(dir, CoreComponent.PasswordFileName));
-						if (!Directory.Exists(dir))
-							Directory.CreateDirectory(dir);
-						File.WriteAllText(path, password);
-						service.reversibleRenamer = new ReversibleRenamer(password);
+				var renamingMode = parameters.GetParameter<RenameMode>(context, def, "mode");
+				if (renamingMode == RenameMode.Reversible && service.reversibleRenamer == null) {
+					var generatePassword = parameters.GetParameter<bool>(context, def, "generatePassword");
+					var password = parameters.GetParameter<string>(context, def, "password");
+					if (generatePassword || password == null) {
+						password = context.Registry.GetService<IRandomService>().SeedString;
 					}
+					string dir = context.OutputDirectory;
+					string path = Path.GetFullPath(Path.Combine(dir, CoreComponent.PasswordFileName));
+					if (!Directory.Exists(dir))
+						Directory.CreateDirectory(dir);
+					File.WriteAllText(path, password);
+					service.reversibleRenamer = new ReversibleRenamer(password);
 				}
+
 				service.SetCanRename(def, false);
 			}
 
