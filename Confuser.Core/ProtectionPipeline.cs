@@ -122,22 +122,32 @@ namespace Confuser.Core {
 		/// </summary>
 		/// <param name="stage">The pipeline stage.</param>
 		/// <param name="func">The stage function.</param>
-		/// <param name="targets">The target list of the stage.</param>
+		/// <param name="targetModules">The modules' target list of the stage.</param>
 		/// <param name="context">The working context.</param>
-		internal void ExecuteStage(PipelineStage stage, Action<ConfuserContext> func, Func<IList<IDnlibDef>> targets, ConfuserContext context) {
-			foreach (ProtectionPhase pre in preStage[stage]) {
+		internal void ExecuteStage(PipelineStage stage, Action<ConfuserContext> func, ConfuserContext context, params ModuleDefMD[] targetModules) {
+			foreach (var pre in preStage[stage]) {
 				context.CheckCancellation();
 				context.Logger.DebugFormat("Executing '{0}' phase...", pre.Name);
-				pre.Execute(context, new ProtectionParameters(pre.Parent, Filter(context, targets(), pre)));
+				pre.Execute(context, new ProtectionParameters(pre.Parent, Filter(context, GetTargets(targetModules), pre)));
 			}
+
 			context.CheckCancellation();
 			func(context);
 			context.CheckCancellation();
-			foreach (ProtectionPhase post in postStage[stage]) {
+
+			foreach (var post in postStage[stage]) {
 				context.Logger.DebugFormat("Executing '{0}' phase...", post.Name);
-				post.Execute(context, new ProtectionParameters(post.Parent, Filter(context, targets(), post)));
+				post.Execute(context, new ProtectionParameters(post.Parent, Filter(context, GetTargets(targetModules), post)));
 				context.CheckCancellation();
 			}
+		}
+
+		IList<IDnlibDef> GetTargets(ModuleDefMD[] targetModules) {
+			var result = new List<IDnlibDef>();
+			foreach (var targetModule in targetModules) {
+				result.AddRange(targetModule.FindDefinitions());
+			}
+			return result;
 		}
 
 		/// <summary>

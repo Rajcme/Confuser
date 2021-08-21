@@ -216,22 +216,21 @@ namespace Confuser.Core {
 		/// <param name="pipeline">The protection pipeline.</param>
 		/// <param name="context">The context.</param>
 		static void RunPipeline(ProtectionPipeline pipeline, ConfuserContext context) {
-			Func<IList<IDnlibDef>> getAllDefs = () => context.Modules.SelectMany(module => module.FindDefinitions()).ToList();
-			Func<ModuleDef, IList<IDnlibDef>> getModuleDefs = module => module.FindDefinitions().ToList();
+			var allModules = context.Modules.ToArray();
 
 			context.CurrentModuleIndex = -1;
 
-			pipeline.ExecuteStage(PipelineStage.Inspection, Inspection, () => getAllDefs(), context);
+			pipeline.ExecuteStage(PipelineStage.Inspection, Inspection, context, allModules);
 
 			var options = new ModuleWriterOptionsBase[context.Modules.Count];
 			for (int i = 0; i < context.Modules.Count; i++) {
 				context.CurrentModuleIndex = i;
 				context.CurrentModuleWriterOptions = null;
 
-				pipeline.ExecuteStage(PipelineStage.BeginModule, BeginModule, () => getModuleDefs(context.CurrentModule), context);
-				pipeline.ExecuteStage(PipelineStage.ProcessModule, ProcessModule, () => getModuleDefs(context.CurrentModule), context);
-				pipeline.ExecuteStage(PipelineStage.OptimizeMethods, OptimizeMethods, () => getModuleDefs(context.CurrentModule), context);
-				pipeline.ExecuteStage(PipelineStage.EndModule, EndModule, () => getModuleDefs(context.CurrentModule), context);
+				pipeline.ExecuteStage(PipelineStage.BeginModule, BeginModule, context, context.CurrentModule);
+				pipeline.ExecuteStage(PipelineStage.ProcessModule, ProcessModule, context, context.CurrentModule);
+				pipeline.ExecuteStage(PipelineStage.OptimizeMethods, OptimizeMethods, context, context.CurrentModule);
+				pipeline.ExecuteStage(PipelineStage.EndModule, EndModule, context, context.CurrentModule);
 
 				options[i] = context.CurrentModuleWriterOptions;
 			}
@@ -240,7 +239,7 @@ namespace Confuser.Core {
 				context.CurrentModuleIndex = i;
 				context.CurrentModuleWriterOptions = options[i];
 
-				pipeline.ExecuteStage(PipelineStage.WriteModule, WriteModule, () => getModuleDefs(context.CurrentModule), context);
+				pipeline.ExecuteStage(PipelineStage.WriteModule, WriteModule, context, context.CurrentModule);
 
 				context.OutputModules[i] = context.CurrentModuleOutput;
 				context.OutputSymbols[i] = context.CurrentModuleSymbol;
@@ -251,9 +250,9 @@ namespace Confuser.Core {
 
 			context.CurrentModuleIndex = -1;
 
-			pipeline.ExecuteStage(PipelineStage.Debug, Debug, () => getAllDefs(), context);
-			pipeline.ExecuteStage(PipelineStage.Pack, Pack, () => getAllDefs(), context);
-			pipeline.ExecuteStage(PipelineStage.SaveModules, SaveModules, () => getAllDefs(), context);
+			pipeline.ExecuteStage(PipelineStage.Debug, Debug, context, allModules);
+			pipeline.ExecuteStage(PipelineStage.Pack, Pack, context, allModules);
+			pipeline.ExecuteStage(PipelineStage.SaveModules, SaveModules, context, allModules);
 
 			if (!context.PackerInitiated)
 				context.Logger.Info("Done.");
@@ -366,7 +365,7 @@ namespace Confuser.Core {
 				}
 		}
 
-		static void ProcessModule(ConfuserContext context) => 
+		static void ProcessModule(ConfuserContext context) =>
 			context.CurrentModuleWriterOptions.WriterEvent += (sender, e) => context.CheckCancellation();
 
 		static void OptimizeMethods(ConfuserContext context) {
