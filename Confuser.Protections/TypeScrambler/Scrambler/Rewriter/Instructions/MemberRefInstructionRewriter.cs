@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Confuser.Core;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
 
@@ -48,8 +49,12 @@ namespace Confuser.Protections.TypeScrambler.Scrambler.Rewriter.Instructions {
 				}
 				body[index].Operand = newTypeSpec;
 
-				body.Insert(++index, Instruction.Create(OpCodes.Call, mod.Import(gettype)));
-				body.Insert(++index, Instruction.Create(OpCodes.Call, mod.Import(createInstance)));
+				var instructions = new[] {
+					Instruction.Create(OpCodes.Call, mod.Import(gettype)),
+					Instruction.Create(OpCodes.Call, mod.Import(createInstance))
+				};
+				body.InsertRange(index + 1, instructions);
+				index += instructions.Length;
 			}
 		}
 	}

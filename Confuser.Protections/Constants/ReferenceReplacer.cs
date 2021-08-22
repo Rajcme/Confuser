@@ -25,9 +25,11 @@ namespace Confuser.Protections.Constants {
 				int i = method.Body.Instructions.IndexOf(instr.Item1);
 				instr.Item1.OpCode = OpCodes.Ldc_I4;
 				instr.Item1.Operand = (int)instr.Item2;
-				method.Body.Instructions.Insert(i + 1, Instruction.Create(OpCodes.Call, instr.Item3));
-				Instruction instr1 = method.Body.Instructions[i + 1];
-				method.Body.Instructions.Insert(i + 1, Instruction.Create(OpCodes.Br_S, instr1));
+				var instr1 = Instruction.Create(OpCodes.Call, instr.Item3);
+				method.Body.Instructions.InsertRange(i + 1, new [] {
+					Instruction.Create(OpCodes.Br_S, instr1),
+					instr1
+				});
 			}
 		}
 
@@ -150,21 +152,18 @@ namespace Confuser.Protections.Constants {
 			if (key.EntryState == key.ExitState)
 				return;
 
-			Instruction first = null;
+			Instruction first;
 			// Cannot use graph.IndexOf because instructions has been modified.
 			int targetIndex = body.Instructions.IndexOf(block.Header);
 
-			CFGState entry;
-			if (!ctx.StatesMap.TryGetValue(key.EntryState, out entry)) {
+			if (!ctx.StatesMap.TryGetValue(key.EntryState, out var entry)) {
 				key.Type = BlockKeyType.Explicit;
 			}
-
 
 			if (key.Type == BlockKeyType.Incremental) {
 				// Incremental
 
-				CFGState exit;
-				if (!ctx.StatesMap.TryGetValue(key.ExitState, out exit)) {
+				if (!ctx.StatesMap.TryGetValue(key.ExitState, out var exit)) {
 					// Create new exit state
 					// Update one of the entry states to be exit state
 					exit = entry;
@@ -176,17 +175,20 @@ namespace Confuser.Protections.Constants {
 					var fl = CFGState.EncodeFlag(false, updateId, getId);
 					var incr = entry.GetIncrementalUpdate(updateId, targetValue);
 
-					body.Instructions.Insert(targetIndex++, first = Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
-					body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
-					body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Ldc_I4, (int)incr));
-					body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
-					body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Pop));
+					body.Instructions.InsertRange(targetIndex, new[] {
+						first = Instruction.Create(OpCodes.Ldloca, ctx.StateVariable),
+						Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl),
+						Instruction.Create(OpCodes.Ldc_I4, (int)incr),
+						Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext),
+						Instruction.Create(OpCodes.Pop)
+					});
 
 					ctx.StatesMap[key.ExitState] = exit;
 				}
 				else {
 					// Scan for updated state
 					var headerIndex = targetIndex;
+					var insertingInstructions = new List<Instruction>(4 * 5);
 					for (int stateId = 0; stateId < 4; stateId++) {
 						if (entry.Get(stateId) == exit.Get(stateId))
 							continue;
@@ -196,43 +198,49 @@ namespace Confuser.Protections.Constants {
 						var fl = CFGState.EncodeFlag(false, stateId, getId);
 						var incr = entry.GetIncrementalUpdate(stateId, targetValue);
 
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Ldc_I4, (int)incr));
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Pop));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Ldc_I4, (int)incr));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Pop));
 					}
+
+					body.Instructions.InsertRange(targetIndex, insertingInstructions);
 					first = body.Instructions[headerIndex];
 				}
 			}
 			else {
 				// Explicit
 
-				CFGState exit;
-				if (!ctx.StatesMap.TryGetValue(key.ExitState, out exit)) {
+				if (!ctx.StatesMap.TryGetValue(key.ExitState, out var exit)) {
 					// Create new exit state from random seed
 					var seed = ctx.Random.NextUInt32();
 					exit = new CFGState(seed);
-					body.Instructions.Insert(targetIndex++, first = Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
-					body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Ldc_I4, (int)seed));
-					body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxCtor));
+
+					body.Instructions.InsertRange(targetIndex, new [] {
+						first = Instruction.Create(OpCodes.Ldloca, ctx.StateVariable),
+						Instruction.Create(OpCodes.Ldc_I4, (int)seed),
+						Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxCtor)
+					});
 
 					ctx.StatesMap[key.ExitState] = exit;
 				}
 				else {
 					// Scan for updated state
 					var headerIndex = targetIndex;
+					var insertingInstructions = new List<Instruction>(4 * 5);
 					for (int stateId = 0; stateId < 4; stateId++) {
 						uint targetValue = exit.Get(stateId);
 						int getId = ctx.Random.NextInt32(3);
 						var fl = CFGState.EncodeFlag(true, stateId, getId);
 
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Ldc_I4, (int)targetValue));
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
-						body.Instructions.Insert(targetIndex++, Instruction.Create(OpCodes.Pop));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Ldc_I4, (int)targetValue));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Pop));
 					}
+					body.Instructions.InsertRange(targetIndex, insertingInstructions);
 					first = body.Instructions[headerIndex];
 				}
 			}
@@ -240,8 +248,14 @@ namespace Confuser.Protections.Constants {
 			ctx.Graph.Body.ReplaceReference(block.Header, first);
 		}
 
-		static uint InsertStateGetAndUpdate(CFGContext ctx, ref int index, BlockKeyType type, ref CFGState currentState, CFGState? targetState) {
+		static uint InsertStateGetAndUpdate(CFGContext ctx, ref int index, BlockKeyType type, ref CFGState currentState,
+			CFGState? targetState) {
 			var body = ctx.Graph.Body;
+
+			List<Instruction> insertingInstructions;
+			int[] stateIds;
+			int i = 0;
+			uint getValue = 0;
 
 			if (type == BlockKeyType.Incremental) {
 				// Incremental
@@ -256,18 +270,22 @@ namespace Confuser.Protections.Constants {
 					var incr = currentState.GetIncrementalUpdate(updateId, targetValue);
 					currentState.UpdateExplicit(updateId, targetValue);
 
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4, (int)incr));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
+					insertingInstructions = new List<Instruction>(3) {
+						Instruction.Create(OpCodes.Ldloca, ctx.StateVariable),
+						Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl), Instruction.Create(OpCodes.Ldc_I4, (int)incr),
+						Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext)
+					};
+					body.Instructions.InsertRange(index, insertingInstructions);
+					index += insertingInstructions.Count;
 
 					return currentState.Get(getId);
 				}
+
 				// Scan for updated state
-				int[] stateIds = { 0, 1, 2, 3 };
+
+				stateIds = new [] { 0, 1, 2, 3 };
 				ctx.Random.Shuffle(stateIds);
-				int i = 0;
-				uint getValue = 0;
+				insertingInstructions = new List<Instruction>(stateIds.Length * 5);
 				foreach (var stateId in stateIds) {
 					// There must be at least one update&get
 					if (currentState.Get(stateId) == targetState.Value.Get(stateId) &&
@@ -282,72 +300,79 @@ namespace Confuser.Protections.Constants {
 					var incr = currentState.GetIncrementalUpdate(stateId, targetValue);
 					currentState.UpdateExplicit(stateId, targetValue);
 
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4, (int)incr));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
+					insertingInstructions.Add(Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
+					insertingInstructions.Add(Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
+					insertingInstructions.Add(Instruction.Create(OpCodes.Ldc_I4, (int)incr));
+					insertingInstructions.Add(Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
 
 					i++;
 					if (i == stateIds.Length)
 						getValue = currentState.Get(getId);
 					else
-						body.Instructions.Insert(index++, Instruction.Create(OpCodes.Pop));
+						insertingInstructions.Add(Instruction.Create(OpCodes.Pop));
 				}
+
+				body.Instructions.InsertRange(index, insertingInstructions);
+				index += insertingInstructions.Count;
 				return getValue;
 			}
-			else {
-				// Explicit
 
-				if (targetState == null) {
-					// Create new exit state from random seed
-					var seed = ctx.Random.NextUInt32();
-					currentState = new CFGState(seed);
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Dup));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4, (int)seed));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxCtor));
+			// Explicit
+			if (targetState == null) {
+				// Create new exit state from random seed
+				var seed = ctx.Random.NextUInt32();
+				currentState = new CFGState(seed);
 
-					// Randomly get state
-					int updateId = ctx.Random.NextInt32(3);
-					uint targetValue = ctx.Random.NextUInt32();
+				insertingInstructions = new List<Instruction>(7) {
+					Instruction.Create(OpCodes.Ldloca, ctx.StateVariable),
+					Instruction.Create(OpCodes.Dup),
+					Instruction.Create(OpCodes.Ldc_I4, (int)seed),
+					Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxCtor)
+				};
 
-					int getId = ctx.Random.NextInt32(3);
-					var fl = CFGState.EncodeFlag(false, updateId, getId);
-					var incr = currentState.GetIncrementalUpdate(updateId, targetValue);
-					currentState.UpdateExplicit(updateId, targetValue);
+				// Randomly get state
+				int updateId = ctx.Random.NextInt32(3);
+				uint targetValue = ctx.Random.NextUInt32();
 
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4, (int)incr));
-					body.Instructions.Insert(index++, Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
+				int getId = ctx.Random.NextInt32(3);
+				var fl = CFGState.EncodeFlag(false, updateId, getId);
+				var incr = currentState.GetIncrementalUpdate(updateId, targetValue);
+				currentState.UpdateExplicit(updateId, targetValue);
 
-					return currentState.Get(getId);
-				}
-				else {
-					// Scan for updated state
-					int[] stateIds = { 0, 1, 2, 3 };
-					ctx.Random.Shuffle(stateIds);
-					int i = 0;
-					uint getValue = 0;
-					foreach (var stateId in stateIds) {
-						uint targetValue = targetState.Value.Get(stateId);
-						int getId = ctx.Random.NextInt32(3);
-						var fl = CFGState.EncodeFlag(true, stateId, getId);
-						currentState.UpdateExplicit(stateId, targetValue);
+				insertingInstructions.Add(Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
+				insertingInstructions.Add( Instruction.Create(OpCodes.Ldc_I4, (int)incr));
+				insertingInstructions.Add( Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
 
-						body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
-						body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
-						body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4, (int)targetValue));
-						body.Instructions.Insert(index++, Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
-
-						i++;
-						if (i == stateIds.Length)
-							getValue = targetState.Value.Get(getId);
-						else
-							body.Instructions.Insert(index++, Instruction.Create(OpCodes.Pop));
-					}
-					return getValue;
-				}
+				body.Instructions.InsertRange(index, insertingInstructions);
+				index += insertingInstructions.Count;
+				return currentState.Get(getId);
 			}
+
+			// Scan for updated state
+			stateIds = new [] { 0, 1, 2, 3 };
+			ctx.Random.Shuffle(stateIds);
+			insertingInstructions = new List<Instruction>(stateIds.Length * 5);
+			foreach (var stateId in stateIds) {
+				uint targetValue = targetState.Value.Get(stateId);
+				int getId = ctx.Random.NextInt32(3);
+				var fl = CFGState.EncodeFlag(true, stateId, getId);
+				currentState.UpdateExplicit(stateId, targetValue);
+
+				insertingInstructions.Add(Instruction.Create(OpCodes.Ldloca, ctx.StateVariable));
+				insertingInstructions.Add(Instruction.Create(OpCodes.Ldc_I4_S, (sbyte)fl));
+				insertingInstructions.Add(Instruction.Create(OpCodes.Ldc_I4, (int)targetValue));
+				insertingInstructions.Add(Instruction.Create(OpCodes.Call, ctx.Ctx.CfgCtxNext));
+
+				i++;
+				if (i == stateIds.Length)
+					getValue = targetState.Value.Get(getId);
+				else
+					insertingInstructions.Add(Instruction.Create(OpCodes.Pop));
+			}
+
+			body.Instructions.InsertRange(index, insertingInstructions);
+			index += insertingInstructions.Count;
+			return getValue;
 		}
 
 		static void ReplaceCFG(MethodDef method, List<Tuple<Instruction, uint, IMethod>> instrs, CEContext ctx) {
@@ -403,9 +428,12 @@ namespace Confuser.Protections.Constants {
 
 					var index = graph.Body.Instructions.IndexOf(graph[blockRef.Key].Header);
 					Instruction newHeader;
-					method.Body.Instructions.Insert(index++, newHeader = Instruction.Create(OpCodes.Ldloca, cfgCtx.StateVariable));
-					method.Body.Instructions.Insert(index++, Instruction.Create(OpCodes.Ldc_I4, (int)blockSeed));
-					method.Body.Instructions.Insert(index++, Instruction.Create(OpCodes.Call, ctx.CfgCtxCtor));
+					method.Body.Instructions.InsertRange(index,
+						new[] {
+							newHeader = Instruction.Create(OpCodes.Ldloca, cfgCtx.StateVariable),
+							Instruction.Create(OpCodes.Ldc_I4, (int)blockSeed),
+							Instruction.Create(OpCodes.Call, ctx.CfgCtxCtor)
+						});
 					method.Body.ReplaceReference(graph[blockRef.Key].Header, newHeader);
 					key.Type = BlockKeyType.Incremental;
 				}
@@ -426,8 +454,10 @@ namespace Confuser.Protections.Constants {
 
 					refEntry.Item1.OpCode = OpCodes.Ldc_I4;
 					refEntry.Item1.Operand = (int)(refEntry.Item2 ^ value);
-					method.Body.Instructions.Insert(index++, Instruction.Create(OpCodes.Xor));
-					method.Body.Instructions.Insert(index, Instruction.Create(OpCodes.Call, refEntry.Item3));
+					method.Body.Instructions.InsertRange(index, new [] {
+						Instruction.Create(OpCodes.Xor),
+						Instruction.Create(OpCodes.Call, refEntry.Item3)
+					});
 
 					if (i == blockRef.Value.Count - 1 && targetState == null) {
 						cfgCtx.StatesMap[key.ExitState] = currentState;

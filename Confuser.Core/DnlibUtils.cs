@@ -556,7 +556,7 @@ namespace Confuser.Core {
 
 			return typeDef == typeDef.Module.EntryPoint?.DeclaringType;
 		}
-		
+
 		/// <summary>
 		///		Merges a specified call instruction into the body.
 		/// </summary>
@@ -589,12 +589,12 @@ namespace Confuser.Core {
 			}
 
 			// setup parameter locals
-			foreach (var paramLocal in localParams.Reverse()) {
-				targetBody.Instructions.Insert(index++, new Instruction(OpCodes.Stloc, paramLocal.Value));
-			}
+			var collection = new List<Instruction>(localParams.Count + methodToMerge.Body.Instructions.Count);
+			collection.AddRange( localParams.Reverse()
+				.Select(localParam => new Instruction(OpCodes.Stloc, localParam.Value)));
 
 			var instrMap = new Dictionary<Instruction, Instruction>();
-			var newInstrs = new List<Instruction>();
+			var currentIndex = collection.Count;
 
 			// Transfer instructions to list
 			foreach (var instr in methodToMerge.Body.Instructions) {
@@ -622,31 +622,30 @@ namespace Confuser.Core {
 					newInstr = new Instruction(instr.OpCode, instr.Operand);
 				}
 
-				newInstrs.Add(newInstr);
+				collection.Add(newInstr);
 				instrMap[instr] = newInstr;
 			}
 
 			// Fix branch targets & add instructions
-			foreach (var instr in newInstrs) {
+			for (int i = currentIndex; i < collection.Count; i++) {
+				var instr = collection[i];
 				if (instr.Operand != null && instr.Operand is Instruction instrOp && instrMap.ContainsKey(instrOp))
 					instr.Operand = instrMap[instrOp];
 				else if (instr.Operand is Instruction[] instructionArrayOp)
 					instr.Operand = instructionArrayOp.Select(target => instrMap[target]).ToArray();
-
-				targetBody.Instructions.Insert(index++, instr);
 			}
+			targetBody.Instructions.InsertRange(index, collection);
 
 			// Add Exception Handlers
-			foreach (var eh in methodToMerge.Body.ExceptionHandlers) {
-				targetBody.ExceptionHandlers.Insert(++exIndex, new ExceptionHandler(eh.HandlerType) {
+			targetBody.ExceptionHandlers.InsertRange(exIndex + 1, methodToMerge.Body.ExceptionHandlers.Select(eh =>
+				new ExceptionHandler(eh.HandlerType) {
 					CatchType = eh.CatchType,
 					TryStart = instrMap[eh.TryStart],
 					TryEnd = instrMap[eh.TryEnd],
 					HandlerStart = instrMap[eh.HandlerStart],
 					HandlerEnd = instrMap[eh.HandlerEnd],
 					FilterStart = eh.FilterStart == null ? null : instrMap[eh.FilterStart]
-				});
-			}
+				}));
 		}
 	}
 }

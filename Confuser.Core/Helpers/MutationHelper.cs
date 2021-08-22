@@ -103,11 +103,9 @@ namespace Confuser.Core.Helpers {
 						}
 
 						var firstArgIndex = initialLoadInstructions.Select(method.Body.Instructions.IndexOf).Min();
-						Instruction[] arg = method.Body.Instructions.Skip(firstArgIndex).Take(i - firstArgIndex).ToArray();
+						var arg = method.Body.Instructions.Skip(firstArgIndex).Take(i - firstArgIndex).ToArray();
 						method.Body.Instructions.RemoveRange(firstArgIndex, arg.Length + 1);
-						arg = repl(arg);
-						for (int j = arg.Length - 1; j >= 0; j--)
-							method.Body.Instructions.Insert(firstArgIndex, arg[j]);
+						method.Body.Instructions.InsertRange(firstArgIndex, repl(arg));
 						return;
 					}
 				}

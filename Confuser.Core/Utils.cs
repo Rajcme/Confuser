@@ -200,6 +200,19 @@ namespace Confuser.Core {
 			}
 		}
 
+		public static void InsertRange<T>(this IList<T> self, int index, IEnumerable<T> collection) {
+			if (self is List<T> list && index < self.Count) {
+				list.InsertRange(index, collection);
+				return;
+			}
+
+			var localIndex = 0;
+			foreach (var element in collection) {
+				self.Insert(index + localIndex, element);
+				localIndex++;
+			}
+		}
+
 		public static void RemoveLast<T>(this List<T> self) => self.RemoveAt(self.Count - 1);
 
 		/// <summary>

@@ -291,7 +291,7 @@ namespace Confuser.Protections.ReferenceProxy {
 				MutationHelper.InjectKeys(injectedMethod, Enumerable.Range(0, 9).ToArray(), keyInjection);
 
 				// Encoding
-				MutationHelper.ReplacePlaceholder(injectedMethod, arg => { return encoding.EmitDecode(injectedMethod, ctx, arg); });
+				MutationHelper.ReplacePlaceholder(injectedMethod, arg => encoding.EmitDecode(injectedMethod, ctx, arg));
 				desc.Encoding = encoding;
 
 				initDescs[index] = desc;
@@ -310,10 +310,12 @@ namespace Confuser.Protections.ReferenceProxy {
 
 				TypeDef delegateType = field.Value.Item1.DeclaringType;
 
-				MethodDef cctor = delegateType.FindOrCreateStaticConstructor();
-				cctor.Body.Instructions.Insert(0, Instruction.Create(OpCodes.Call, init.Method));
-				cctor.Body.Instructions.Insert(0, Instruction.CreateLdcI4(opKey));
-				cctor.Body.Instructions.Insert(0, Instruction.Create(OpCodes.Ldtoken, field.Value.Item1));
+				var cctor = delegateType.FindOrCreateStaticConstructor();
+				cctor.Body.Instructions.InsertRange(0, new [] {
+					Instruction.Create(OpCodes.Ldtoken, field.Value.Item1),
+					Instruction.CreateLdcI4(opKey),
+					Instruction.Create(OpCodes.Call, init.Method)
+				});
 
 				fieldDescs.Add(new FieldDesc {
 					Field = field.Value.Item1,
