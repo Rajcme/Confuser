@@ -19,8 +19,9 @@ namespace Confuser.Protections.TypeScrambler {
 
 		private void AddScannedItemGeneral(ScannedItem m) {
 			m.Scan();
-			if (!GenericsMapper.ContainsKey(m.GetMemberDef())) {
-				GenericsMapper.Add(m.GetMemberDef(), m);
+			var memberDef = m.GetMemberDef();
+			if (!GenericsMapper.ContainsKey(memberDef)) {
+				GenericsMapper.Add(memberDef, m);
 			}
 		}
 

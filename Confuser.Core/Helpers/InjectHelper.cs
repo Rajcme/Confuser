@@ -99,7 +99,7 @@ namespace Confuser.Core.Helpers {
 
 			newMethodDef.Signature = ctx.Importer.Import(methodDef.Signature);
 			newMethodDef.Parameters.UpdateParameterTypes();
-			
+
 			foreach (var paramDef in methodDef.ParamDefs)
 				newMethodDef.ParamDefs.Add(new ParamDefUser(paramDef.Name, paramDef.Sequence, paramDef.Attributes));
 
@@ -112,7 +112,7 @@ namespace Confuser.Core.Helpers {
 			if (methodDef.HasBody)
 				CopyMethodBody(methodDef, ctx, newMethodDef);
 		}
-		
+
 		static void CopyMethodBody(MethodDef methodDef, InjectContext ctx, MethodDef newMethodDef)
 		{
 			newMethodDef.Body = new CilBody(methodDef.Body.InitLocals, new List<Instruction>(),
@@ -155,8 +155,8 @@ namespace Confuser.Core.Helpers {
 
 			foreach (Instruction instr in newMethodDef.Body.Instructions)
 			{
-				if (instr.Operand != null && bodyMap.ContainsKey(instr.Operand))
-					instr.Operand = bodyMap[instr.Operand];
+				if (instr.Operand != null && bodyMap.TryGetValue(instr.Operand, out var operand))
+					instr.Operand = operand;
 				else if (instr.Operand is Instruction[] instructions)
 					instr.Operand = instructions.Select(target => (Instruction) bodyMap[target]).ToArray();
 			}
@@ -288,7 +288,7 @@ namespace Confuser.Core.Helpers {
 			public override ITypeDefOrRef Map(ITypeDefOrRef source) {
 				if (DefMap.TryGetValue(source, out var mappedRef))
 					return mappedRef as ITypeDefOrRef;
-				
+
 				// check if the assembly reference needs to be fixed.
 				if (source is TypeRef sourceRef) {
 					var targetAssemblyRef = TargetModule.GetAssemblyRef(sourceRef.DefinitionAssembly.Name);

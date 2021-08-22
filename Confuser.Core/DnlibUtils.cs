@@ -629,8 +629,8 @@ namespace Confuser.Core {
 			// Fix branch targets & add instructions
 			for (int i = currentIndex; i < collection.Count; i++) {
 				var instr = collection[i];
-				if (instr.Operand != null && instr.Operand is Instruction instrOp && instrMap.ContainsKey(instrOp))
-					instr.Operand = instrMap[instrOp];
+				if (instr.Operand != null && instr.Operand is Instruction instrOp && instrMap.TryGetValue(instrOp, out var operand))
+					instr.Operand = operand;
 				else if (instr.Operand is Instruction[] instructionArrayOp)
 					instr.Operand = instructionArrayOp.Select(target => instrMap[target]).ToArray();
 			}

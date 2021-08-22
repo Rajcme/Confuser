@@ -133,14 +133,13 @@ namespace Confuser.Core {
 			Dictionary<string, string> packerParams = null;
 
 			if (proj.Packer != null) {
-				if (!packers.ContainsKey(proj.Packer.Id)) {
+				if (!packers.TryGetValue(proj.Packer.Id, out packer)) {
 					context.Logger.ErrorFormat("Cannot find packer with ID '{0}'.", proj.Packer.Id);
 					throw new ConfuserException(null);
 				}
 				if (proj.Debug)
 					context.Logger.Warn("Generated Debug symbols might not be usable with packers!");
 
-				packer = packers[proj.Packer.Id];
 				packerParams = new Dictionary<string, string>(proj.Packer, StringComparer.OrdinalIgnoreCase);
 			}
 

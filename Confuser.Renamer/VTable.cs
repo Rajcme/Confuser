@@ -156,7 +156,7 @@ namespace Confuser.Renamer {
 					if (slots.Select(g => g.Key)
 						.Any(sig => virtualMethods.ContainsKey(sig) || vTbl.SlotsMap.ContainsKey(sig))) {
 						// Something has a new signature. We need to rewrite the whole thing.
-						
+
 						// This is the step 1 of 12.2 algorithm -- find implementation for still empty slots.
 						// Note that it seems we should include newslot methods as well, despite what the standard said.
 						slots = slots
@@ -214,7 +214,7 @@ namespace Confuser.Renamer {
 						vTbl.InterfaceSlots[iface] = ifaceVTbl
 							.SelectMany(g => g.Select(slot => (g.Key, Slot: slot)))
 							.ToLookup(t => t.Key, t => {
-								if (!t.Key.Equals(signature)) 
+								if (!t.Key.Equals(signature))
 									return t.Slot;
 
 								var targetSlot = t.Slot;
@@ -270,23 +270,22 @@ namespace Confuser.Renamer {
 				return slot;
 			};
 
-			if (vTbl.InterfaceSlots.ContainsKey(iface)) {
-				vTbl.InterfaceSlots[iface] = vTbl.InterfaceSlots[iface].SelectMany(g => g).ToLookup(
+			var interfaceSlots = vTbl.InterfaceSlots;
+			if (interfaceSlots.TryGetValue(iface, out var interfaceSlot)) {
+				interfaceSlots[iface] = interfaceSlot.SelectMany(g => g).ToLookup(
 					slot => slot.Signature, implLookup);
 			}
 			else {
-				vTbl.InterfaceSlots.Add(iface, ifaceVTbl.Slots.ToLookup(
-					slot => slot.Signature, implLookup));
+				interfaceSlots.Add(iface, ifaceVTbl.Slots.ToLookup(slot => slot.Signature, implLookup));
 			}
 
 			foreach (var baseIface in ifaceVTbl.InterfaceSlots) {
-				if (vTbl.InterfaceSlots.ContainsKey(baseIface.Key)) {
-					vTbl.InterfaceSlots[baseIface.Key] = vTbl.InterfaceSlots[baseIface.Key].SelectMany(g => g).ToLookup(
+				if (interfaceSlots.TryGetValue(baseIface.Key, out interfaceSlot)) {
+					interfaceSlots[baseIface.Key] = interfaceSlot.SelectMany(g => g).ToLookup(
 						slot => slot.Signature, implLookup);
 				}
 				else {
-					vTbl.InterfaceSlots.Add(baseIface.Key, baseIface.Value.ToLookup(
-						slot => slot.Signature, implLookup));
+					interfaceSlots.Add(baseIface.Key, baseIface.Value.ToLookup(slot => slot.Signature, implLookup));
 				}
 			}
 		}

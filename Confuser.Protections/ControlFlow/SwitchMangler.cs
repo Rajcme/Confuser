@@ -35,12 +35,10 @@ namespace Confuser.Protections.ControlFlow {
 						BeforeStack[eh.FilterStart.Offset] = 1;
 				}
 
-				int currentStack = 0;
 				for (int i = 0; i < body.Instructions.Count; i++) {
 					var instr = body.Instructions[i];
 
-					if (BeforeStack.ContainsKey(instr.Offset))
-						currentStack = BeforeStack[instr.Offset];
+					BeforeStack.TryGetValue(instr.Offset, out int currentStack);
 
 					BeforeStack[instr.Offset] = currentStack;
 					instr.UpdateStack(ref currentStack, hasReturnValue);
@@ -55,12 +53,8 @@ namespace Confuser.Protections.ControlFlow {
 
 							Increment(RefCount, offset);
 							BrRefs.AddListEntry(offset, instr);
-
-							currentStack = 0;
 							continue;
 						case FlowControl.Call:
-							if (instr.OpCode.Code == Code.Jmp)
-								currentStack = 0;
 							break;
 						case FlowControl.Cond_Branch:
 							if (instr.OpCode.Code == Code.Switch) {

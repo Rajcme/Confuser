@@ -61,16 +61,22 @@ namespace Confuser.Core.Project {
 			}
 		}
 
-		static bool IsFunction(PatternToken token) {
-			if (token.Type != TokenType.Identifier)
+		static bool IsFunction(PatternToken token, out Func<PatternFunction> function) {
+			if (token.Type != TokenType.Identifier) {
+				function = null;
 				return false;
-			return fns.ContainsKey(token.Value);
+			}
+
+			return fns.TryGetValue(token.Value, out function);
 		}
 
-		static bool IsOperator(PatternToken token) {
-			if (token.Type != TokenType.Identifier)
+		static bool IsOperator(PatternToken token, out Func<PatternOperator> op) {
+			if (token.Type != TokenType.Identifier) {
+				op = null;
 				return false;
-			return ops.ContainsKey(token.Value);
+			}
+
+			return ops.TryGetValue(token.Value, out op);
 		}
 
 		Exception UnexpectedEnd() {
@@ -124,17 +130,17 @@ namespace Confuser.Core.Project {
 				}
 					break;
 				case TokenType.Identifier:
-					if (IsOperator(token)) {
+					if (IsOperator(token, out var @operator)) {
 						// unary operator
-						PatternOperator op = ops[token.Value]();
+						PatternOperator op = @operator();
 						if (!op.IsUnary)
 							throw UnexpectedToken(token);
 						op.OperandA = ParseExpression();
 						ret = op;
 					}
-					else if (IsFunction(token)) {
+					else if (IsFunction(token, out var function)) {
 						// function
-						PatternFunction fn = fns[token.Value]();
+						PatternFunction fn = function();
 
 						PatternToken parens = ReadToken();
 						if (parens.Type != TokenType.LParens)
@@ -183,11 +189,11 @@ namespace Confuser.Core.Project {
 			while (peek != null) {
 				if (peek.Value.Type != TokenType.Identifier)
 					break;
-				if (!IsOperator(peek.Value))
+				if (!IsOperator(peek.Value, out var op))
 					break;
 
 				PatternToken binOpToken = ReadToken();
-				PatternOperator binOp = ops[binOpToken.Value]();
+				PatternOperator binOp = op();
 				if (binOp.IsUnary)
 					throw UnexpectedToken(binOpToken);
 				binOp.OperandA = ret;

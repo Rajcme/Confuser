@@ -30,15 +30,15 @@ namespace Confuser.DynCipher.Generation {
 		}
 
 		protected virtual void LoadVar(Variable var) {
-			if (paramMap.ContainsKey(var.Name))
-				ilGen.Emit(OpCodes.Ldarg, paramMap[var.Name]);
+			if (paramMap.TryGetValue(var.Name, out var param))
+				ilGen.Emit(OpCodes.Ldarg, param);
 			else
 				ilGen.Emit(OpCodes.Ldloc, Var(var));
 		}
 
 		protected virtual void StoreVar(Variable var) {
-			if (paramMap.ContainsKey(var.Name))
-				ilGen.Emit(OpCodes.Starg, paramMap[var.Name]);
+			if (paramMap.TryGetValue(var.Name, out var param))
+				ilGen.Emit(OpCodes.Starg, param);
 			else
 				ilGen.Emit(OpCodes.Stloc, Var(var));
 		}

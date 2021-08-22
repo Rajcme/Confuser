@@ -90,15 +90,6 @@ namespace Confuser.Core.Services {
 		public int[] AfterStackDepths { get; private set; }
 
 		/// <summary>
-		///     Determines whether the specified instruction is the target of a branch instruction.
-		/// </summary>
-		/// <param name="instrIndex">The index of instruction.</param>
-		/// <returns><c>true</c> if the specified instruction is a branch target; otherwise, <c>false</c>.</returns>
-		public bool IsBranchTarget(int instrIndex) {
-			return fromInstrs.ContainsKey(instrIndex);
-		}
-
-		/// <summary>
 		///     Perform the actual tracing.
 		/// </summary>
 		/// <returns>This instance.</returns>
@@ -238,8 +229,8 @@ namespace Confuser.Core.Services {
 						}
 					}
 
-					if (fromInstrs.ContainsKey(index))
-						foreach (Instruction fromInstr in fromInstrs[index]) {
+					if (fromInstrs.TryGetValue(index, out var instructions))
+						foreach (var fromInstr in instructions) {
 							if (!seen.Contains(fromInstr.Offset)) {
 								seen.Add(fromInstr.Offset);
 								working.Enqueue(offset2index[fromInstr.Offset]);

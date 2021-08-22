@@ -292,8 +292,7 @@ namespace Confuser.Protections.Constants {
 
 							// Prevent array length from being encoded
 							var arrLen = (int)instrs[i - 4].Operand;
-							if (ldc.ContainsKey(arrLen)) {
-								List<Tuple<MethodDef, Instruction>> list = ldc[arrLen];
+							if (ldc.TryGetValue(arrLen, out var list)) {
 								list.RemoveWhere(entry => entry.Item2 == instrs[i - 4]);
 								if (list.Count == 0)
 									ldc.Remove(arrLen);

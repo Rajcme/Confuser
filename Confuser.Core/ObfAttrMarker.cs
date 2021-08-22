@@ -297,12 +297,11 @@ namespace Confuser.Core {
 			extModules = new List<byte[]>();
 
 			if (proj.Packer != null) {
-				if (!packers.ContainsKey(proj.Packer.Id)) {
+				if (!packers.TryGetValue(proj.Packer.Id, out packer)) {
 					context.Logger.ErrorFormat("Cannot find packer with ID '{0}'.", proj.Packer.Id);
 					throw new ConfuserException(null);
 				}
 
-				packer = packers[proj.Packer.Id];
 				packerParams = new Dictionary<string, string>(proj.Packer, StringComparer.OrdinalIgnoreCase);
 			}
 
