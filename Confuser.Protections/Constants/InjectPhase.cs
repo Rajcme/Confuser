@@ -149,29 +149,30 @@ namespace Confuser.Protections.Constants {
 
 		void MutateInitializer(CEContext moduleCtx, MethodDef decomp) {
 			moduleCtx.InitMethod.Body.SimplifyMacros(moduleCtx.InitMethod.Parameters);
-			List<Instruction> instrs = moduleCtx.InitMethod.Body.Instructions.ToList();
-			for (int i = 0; i < instrs.Count; i++) {
-				Instruction instr = instrs[i];
-				var method = instr.Operand as IMethod;
-				if (instr.OpCode == OpCodes.Call) {
-					if (method.DeclaringType.Name == "Mutation" &&
-					    method.Name == "Crypt") {
-						Instruction ldBlock = instrs[i - 2];
-						Instruction ldKey = instrs[i - 1];
+			var instructions = moduleCtx.InitMethod.Body.Instructions;
+			int instructionIndex = 0;
+			while (instructionIndex < instructions.Count) {
+				var instruction = instructions[instructionIndex];
+				var method = instruction.Operand as IMethod;
+				if (instruction.OpCode == OpCodes.Call) {
+					if (method.DeclaringType.Name == "Mutation" && method.Name == "Crypt") {
+						var ldBlock = instructions[instructionIndex - 2];
+						var ldKey = instructions[instructionIndex - 1];
 						Debug.Assert(ldBlock.OpCode == OpCodes.Ldloc && ldKey.OpCode == OpCodes.Ldloc);
-						instrs.RemoveRange(i - 2, 3);
-						instrs.InsertRange(i - 2, moduleCtx.ModeHandler.EmitDecrypt(moduleCtx.InitMethod, moduleCtx,
-							(Local)ldBlock.Operand, (Local)ldKey.Operand));
+						instructionIndex += instructions.RemoveAndInsertRange(
+							instructionIndex - 2,
+							3,
+							moduleCtx.ModeHandler.EmitDecrypt(moduleCtx.InitMethod, moduleCtx,
+								(Local)ldBlock.Operand, (Local)ldKey.Operand));
+						continue;
 					}
-					else if (method.DeclaringType.Name == "Lzma" &&
-					         method.Name == "Decompress") {
-						instr.Operand = decomp;
+
+					if (method.DeclaringType.Name == "Lzma" && method.Name == "Decompress") {
+						instruction.Operand = decomp;
 					}
 				}
+				instructionIndex++;
 			}
-			moduleCtx.InitMethod.Body.Instructions.Clear();
-			foreach (Instruction instr in instrs)
-				moduleCtx.InitMethod.Body.Instructions.Add(instr);
 		}
 	}
 }

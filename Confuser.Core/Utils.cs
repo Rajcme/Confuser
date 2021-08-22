@@ -189,6 +189,13 @@ namespace Confuser.Core {
 			}
 		}
 
+		public static int RemoveAndInsertRange<T>(this IList<T> self, int index, int removingCount, IEnumerable<T> collection) {
+			int previousCount = self.Count;
+			self.RemoveRange(index, removingCount);
+			self.InsertRange(index, collection);
+			return self.Count - previousCount;
+		}
+
 		public static void RemoveRange<T>(this IList<T> self, int index, int count) {
 			if (self is List<T> list) {
 				list.RemoveRange(index, count);

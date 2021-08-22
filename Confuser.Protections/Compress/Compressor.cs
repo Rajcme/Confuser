@@ -204,11 +204,12 @@ namespace Confuser.Protections {
 
 		void InjectStub(ConfuserContext context, CompressorContext compCtx, ProtectionParameters parameters, ModuleDef stubModule) {
 			var rt = context.Registry.GetService<IRuntimeService>();
-			RandomGenerator random = context.Registry.GetService<IRandomService>().GetRandomGenerator(Id);
+			var random = context.Registry.GetService<IRandomService>().GetRandomGenerator(Id);
 			var comp = context.Registry.GetService<ICompressionService>();
 
 			var rtType = rt.GetRuntimeType(compCtx.CompatMode ? "Confuser.Runtime.CompressorCompat" : "Confuser.Runtime.Compressor");
-			IEnumerable<IDnlibDef> defs = InjectHelper.Inject(rtType, stubModule.GlobalType, stubModule);
+			var methodDefs = InjectHelper.Inject(rtType, stubModule.GlobalType, stubModule).OfType<MethodDef>()
+				.ToArray();
 
 			switch (parameters.GetParameter(context, context.CurrentModule, "key", Mode.Normal)) {
 			case Mode.Normal:
@@ -225,7 +226,7 @@ namespace Confuser.Protections {
 			context.Logger.Debug("Encrypting modules...");
 
 			// Main
-			MethodDef entryPoint = defs.OfType<MethodDef>().Single(method => method.Name == "Main");
+			var entryPoint = methodDefs.Single(method => method.Name == "Main");
 			stubModule.EntryPoint = entryPoint;
 
 			if (compCtx.EntryPoint.HasAttribute("System.STAThreadAttribute")) {
@@ -257,31 +258,33 @@ namespace Confuser.Protections {
 			InjectData(stubModule, entryPoint, encryptedModule);
 
 			// Decrypt
-			MethodDef decrypter = defs.OfType<MethodDef>().Single(method => method.Name == "Decrypt");
+			var decrypter = methodDefs.Single(method => method.Name == "Decrypt");
 			decrypter.Body.SimplifyMacros(decrypter.Parameters);
-			List<Instruction> instrs = decrypter.Body.Instructions.ToList();
-			for (int i = 0; i < instrs.Count; i++) {
-				Instruction instr = instrs[i];
-				if (instr.OpCode == OpCodes.Call) {
-					var method = (IMethod)instr.Operand;
-					if (method.DeclaringType.Name == "Mutation" &&
-						method.Name == "Crypt") {
-						Instruction ldDst = instrs[i - 2];
-						Instruction ldSrc = instrs[i - 1];
+			var instructions = decrypter.Body.Instructions;
+			int instructionIndex = 0;
+			while (instructionIndex < instructions.Count) {
+				var instruction = instructions[instructionIndex];
+				if (instruction.OpCode == OpCodes.Call) {
+					var method = (IMethod)instruction.Operand;
+					if (method.DeclaringType.Name == "Mutation" && method.Name == "Crypt") {
+						var ldDst = instructions[instructionIndex - 2];
+						var ldSrc = instructions[instructionIndex - 1];
 						Debug.Assert(ldDst.OpCode == OpCodes.Ldloc && ldSrc.OpCode == OpCodes.Ldloc);
-						instrs.RemoveRange(i - 2, 3);
-						instrs.InsertRange(i - 2, compCtx.Deriver.EmitDerivation(decrypter, context, (Local)ldDst.Operand, (Local)ldSrc.Operand));
+						instructionIndex += instructions.RemoveAndInsertRange(
+							instructionIndex - 2,
+							3,
+							compCtx.Deriver.EmitDerivation(decrypter, context, (Local)ldDst.Operand,
+								(Local)ldSrc.Operand));
+						continue;
 					}
-					else if (method.DeclaringType.Name == "Lzma" &&
-							 method.Name == "Decompress") {
-						MethodDef decomp = comp.GetRuntimeDecompressor(stubModule, member => { });
-						instr.Operand = decomp;
+
+					if (method.DeclaringType.Name == "Lzma" && method.Name == "Decompress") {
+						instruction.Operand = comp.GetRuntimeDecompressor(stubModule, member => { });
 					}
 				}
+
+				instructionIndex++;
 			}
-			decrypter.Body.Instructions.Clear();
-			foreach (Instruction instr in instrs)
-				decrypter.Body.Instructions.Add(instr);
 
 			// Pack modules
 			PackModules(context, compCtx, stubModule, comp, random);

@@ -97,7 +97,7 @@ namespace Confuser.Protections.Resources {
 			moduleCtx.DataField = new FieldDefUser(moduleCtx.Name.RandomName(), new FieldSig(dataType.ToTypeSig())) {
 				IsStatic = true,
 				HasFieldRVA = true,
-				InitialValue = new byte[0],
+				InitialValue = Array.Empty<byte>(),
 				Access = FieldAttributes.CompilerControlled
 			};
 			context.CurrentModule.GlobalType.Fields.Add(moduleCtx.DataField);
@@ -106,28 +106,30 @@ namespace Confuser.Protections.Resources {
 
 		void MutateInitializer(REContext moduleCtx, MethodDef decomp) {
 			moduleCtx.InitMethod.Body.SimplifyMacros(moduleCtx.InitMethod.Parameters);
-			List<Instruction> instrs = moduleCtx.InitMethod.Body.Instructions.ToList();
-			for (int i = 0; i < instrs.Count; i++) {
-				Instruction instr = instrs[i];
+			var instructions = moduleCtx.InitMethod.Body.Instructions;
+			int instructionIndex = 0;
+			while (instructionIndex < instructions.Count) {
+				var instr = instructions[instructionIndex];
 				var method = instr.Operand as IMethod;
 				if (instr.OpCode == OpCodes.Call) {
-					if (method.DeclaringType.Name == "Mutation" &&
-					    method.Name == "Crypt") {
-						Instruction ldBlock = instrs[i - 2];
-						Instruction ldKey = instrs[i - 1];
+					if (method.DeclaringType.Name == "Mutation" && method.Name == "Crypt") {
+						var ldBlock = instructions[instructionIndex - 2];
+						var ldKey = instructions[instructionIndex - 1];
 						Debug.Assert(ldBlock.OpCode == OpCodes.Ldloc && ldKey.OpCode == OpCodes.Ldloc);
-						instrs.RemoveRange(i - 2, 3);
-						instrs.InsertRange(i - 2, moduleCtx.ModeHandler.EmitDecrypt(moduleCtx.InitMethod, moduleCtx, (Local)ldBlock.Operand, (Local)ldKey.Operand));
+						instructionIndex += instructions.RemoveAndInsertRange(
+							instructionIndex - 2,
+							3,
+							moduleCtx.ModeHandler.EmitDecrypt(moduleCtx.InitMethod, moduleCtx,
+								(Local)ldBlock.Operand, (Local)ldKey.Operand));
+						continue;
 					}
-					else if (method.DeclaringType.Name == "Lzma" &&
-					         method.Name == "Decompress") {
+					if (method.DeclaringType.Name == "Lzma" && method.Name == "Decompress") {
 						instr.Operand = decomp;
 					}
 				}
+
+				instructionIndex++;
 			}
-			moduleCtx.InitMethod.Body.Instructions.Clear();
-			foreach (Instruction instr in instrs)
-				moduleCtx.InitMethod.Body.Instructions.Add(instr);
 
 			MutationHelper.ReplacePlaceholder(moduleCtx.InitMethod, arg => {
 				var repl = new List<Instruction>();

@@ -102,10 +102,10 @@ namespace Confuser.Core.Helpers {
 								pendingInstructions.Enqueue(method.Body.Instructions[argIndex]);
 						}
 
-						var firstArgIndex = initialLoadInstructions.Select(method.Body.Instructions.IndexOf).Min();
+						var firstArgIndex = initialLoadInstructions.Min(instruction =>
+							method.Body.Instructions.IndexOf(instruction));
 						var arg = method.Body.Instructions.Skip(firstArgIndex).Take(i - firstArgIndex).ToArray();
-						method.Body.Instructions.RemoveRange(firstArgIndex, arg.Length + 1);
-						method.Body.Instructions.InsertRange(firstArgIndex, repl(arg));
+						method.Body.Instructions.RemoveAndInsertRange(firstArgIndex, arg.Length + 1, repl(arg));
 						return;
 					}
 				}

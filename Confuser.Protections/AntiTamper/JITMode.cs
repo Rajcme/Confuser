@@ -71,31 +71,33 @@ namespace Confuser.Protections.AntiTamper {
 
 			var rt = context.Registry.GetService<IRuntimeService>();
 			TypeDef initType = rt.GetRuntimeType("Confuser.Runtime.AntiTamperJIT");
-			IEnumerable<IDnlibDef> defs = InjectHelper.Inject(initType, context.CurrentModule.GlobalType, context.CurrentModule);
-			initMethod = defs.OfType<MethodDef>().Single(method => method.Name == "Initialize");
+			var defs = InjectHelper.Inject(initType, context.CurrentModule.GlobalType, context.CurrentModule).ToArray();
+			var methodDefs = defs.OfType<MethodDef>().ToArray();
+			initMethod = methodDefs.Single(method => method.Name == "Initialize");
 
 			initMethod.Body.SimplifyMacros(initMethod.Parameters);
-			List<Instruction> instrs = initMethod.Body.Instructions.ToList();
-			for (int i = 0; i < instrs.Count; i++) {
-				Instruction instr = instrs[i];
-				if (instr.OpCode == OpCodes.Ldtoken) {
-					instr.Operand = context.CurrentModule.GlobalType;
+			var instructions = initMethod.Body.Instructions;
+			int instructionIndex = 0;
+			while (instructionIndex < instructions.Count) {
+				var instruction = instructions[instructionIndex];
+				if (instruction.OpCode == OpCodes.Ldtoken) {
+					instruction.Operand = context.CurrentModule.GlobalType;
 				}
-				else if (instr.OpCode == OpCodes.Call) {
-					var method = (IMethod)instr.Operand;
-					if (method.DeclaringType.Name == "Mutation" &&
-						method.Name == "Crypt") {
-						Instruction ldDst = instrs[i - 2];
-						Instruction ldSrc = instrs[i - 1];
+				else if (instruction.OpCode == OpCodes.Call) {
+					var method = (IMethod)instruction.Operand;
+					if (method.DeclaringType.Name == "Mutation" && method.Name == "Crypt") {
+						var ldDst = instructions[instructionIndex - 2];
+						var ldSrc = instructions[instructionIndex - 1];
 						Debug.Assert(ldDst.OpCode == OpCodes.Ldloc && ldSrc.OpCode == OpCodes.Ldloc);
-						instrs.RemoveRange(i - 2, 3);
-						instrs.InsertRange(i - 2, deriver.EmitDerivation(initMethod, context, (Local)ldDst.Operand, (Local)ldSrc.Operand));
+						instructionIndex += instructions.RemoveAndInsertRange(
+							instructionIndex - 2,
+							3,
+							deriver.EmitDerivation(initMethod, context, (Local)ldDst.Operand, (Local)ldSrc.Operand));
+						continue;
 					}
 				}
+				instructionIndex++;
 			}
-			initMethod.Body.Instructions.Clear();
-			foreach (Instruction instr in instrs)
-				initMethod.Body.Instructions.Add(instr);
 
 			MutationHelper.InjectKeys(initMethod,
 									  new[] { 0, 1, 2, 3, 4 },
@@ -114,7 +116,7 @@ namespace Confuser.Protections.AntiTamper {
 			context.CurrentModule.GlobalType.Methods.Add(cctorRepl);
 			name.MarkHelper(cctorRepl, marker, parent);
 
-			MutationHelper.InjectKeys(defs.OfType<MethodDef>().Single(method => method.Name == "HookHandler"),
+			MutationHelper.InjectKeys(methodDefs.Single(method => method.Name == "HookHandler"),
 									  new[] { 0 }, new[] { (int)key });
 			foreach (IDnlibDef def in defs) {
 				if (def.Name == "MethodData") {
