@@ -159,10 +159,9 @@ namespace Confuser.Protections.Constants {
 						Instruction ldBlock = instrs[i - 2];
 						Instruction ldKey = instrs[i - 1];
 						Debug.Assert(ldBlock.OpCode == OpCodes.Ldloc && ldKey.OpCode == OpCodes.Ldloc);
-						instrs.RemoveAt(i);
-						instrs.RemoveAt(i - 1);
-						instrs.RemoveAt(i - 2);
-						instrs.InsertRange(i - 2, moduleCtx.ModeHandler.EmitDecrypt(moduleCtx.InitMethod, moduleCtx, (Local)ldBlock.Operand, (Local)ldKey.Operand));
+						instrs.RemoveRange(i - 2, 3);
+						instrs.InsertRange(i - 2, moduleCtx.ModeHandler.EmitDecrypt(moduleCtx.InitMethod, moduleCtx,
+							(Local)ldBlock.Operand, (Local)ldKey.Operand));
 					}
 					else if (method.DeclaringType.Name == "Lzma" &&
 					         method.Name == "Decompress") {

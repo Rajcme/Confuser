@@ -150,7 +150,7 @@ namespace Confuser.Protections.Constants {
 				if (buffIndex + 1 < moduleCtx.EncodedBuffer.Count && moduleCtx.EncodedBuffer[buffIndex + 1] == hi)
 					break;
 			} while (buffIndex >= 0);
-			
+
 			if (buffIndex == -1) {
 				buffIndex = moduleCtx.EncodedBuffer.Count;
 				moduleCtx.EncodedBuffer.Add(lo);
@@ -178,9 +178,7 @@ namespace Confuser.Protections.Constants {
 				instrs[i - 3].OpCode = OpCodes.Call;
 				var arrType = new SZArraySig(((ITypeDefOrRef)instrs[i - 3].Operand).ToTypeSig());
 				instrs[i - 3].Operand = new MethodSpecUser(decoder.Item1, new GenericInstMethodSig(arrType));
-				instrs.RemoveAt(i - 2);
-				instrs.RemoveAt(i - 2);
-				instrs.RemoveAt(i - 2);
+				instrs.RemoveRange(i - 2, 3);
 			}
 		}
 

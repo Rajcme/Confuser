@@ -189,6 +189,19 @@ namespace Confuser.Core {
 			}
 		}
 
+		public static void RemoveRange<T>(this IList<T> self, int index, int count) {
+			if (self is List<T> list) {
+				list.RemoveRange(index, count);
+				return;
+			}
+
+			for (int i = index + count - 1; i >= index; i--) {
+				self.RemoveAt(i);
+			}
+		}
+
+		public static void RemoveLast<T>(this List<T> self) => self.RemoveAt(self.Count - 1);
+
 		/// <summary>
 		///     Returns a <see cref="IEnumerable{T}" /> that log the progress of iterating the specified list.
 		/// </summary>

@@ -81,9 +81,10 @@ namespace Confuser.CLI {
 					var proj = new ConfuserProject();
 					var templateModules = new List<ProjectModule>();
 
-					if (Path.GetExtension(files[files.Count - 1]) == ".crproj") {
-						LoadTemplateProject(files[files.Count - 1], proj, templateModules);
-						files.RemoveAt(files.Count - 1);
+					var lastIndex = files.Count - 1;
+					if (Path.GetExtension(files[lastIndex]) == ".crproj") {
+						LoadTemplateProject(files[lastIndex], proj, templateModules);
+						files.RemoveAt(lastIndex);
 					}
 
 					// Generate a ConfuserProject for input modules

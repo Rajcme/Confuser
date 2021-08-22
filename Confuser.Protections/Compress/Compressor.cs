@@ -269,9 +269,7 @@ namespace Confuser.Protections {
 						Instruction ldDst = instrs[i - 2];
 						Instruction ldSrc = instrs[i - 1];
 						Debug.Assert(ldDst.OpCode == OpCodes.Ldloc && ldSrc.OpCode == OpCodes.Ldloc);
-						instrs.RemoveAt(i);
-						instrs.RemoveAt(i - 1);
-						instrs.RemoveAt(i - 2);
+						instrs.RemoveRange(i - 2, 3);
 						instrs.InsertRange(i - 2, compCtx.Deriver.EmitDerivation(decrypter, context, (Local)ldDst.Operand, (Local)ldSrc.Operand));
 					}
 					else if (method.DeclaringType.Name == "Lzma" &&

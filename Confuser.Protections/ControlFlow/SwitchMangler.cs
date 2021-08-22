@@ -316,7 +316,7 @@ namespace Confuser.Protections.ControlFlow {
 								var targetKey = predicate != null ? predicate.GetSwitchKey(brKey) : brKey;
 								var unkSrc = hasUnknownSource(newStatement);
 
-								newStatement.RemoveAt(newStatement.Count - 1);
+								newStatement.RemoveLast();
 
 								if (unkSrc) {
 									newStatement.Add(Instruction.Create(OpCodes.Ldc_I4, targetKey));
@@ -347,7 +347,7 @@ namespace Confuser.Protections.ControlFlow {
 								bool unkSrc = hasUnknownSource(newStatement);
 								int nextKey = key[i + 1];
 								OpCode condBr = newStatement.Last().OpCode;
-								newStatement.RemoveAt(newStatement.Count - 1);
+								newStatement.RemoveLast();
 
 								if (ctx.Random.NextBoolean()) {
 									condBr = InverseBranch(condBr);

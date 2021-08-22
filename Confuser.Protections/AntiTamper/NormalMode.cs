@@ -65,9 +65,7 @@ namespace Confuser.Protections.AntiTamper {
 						Instruction ldDst = instrs[i - 2];
 						Instruction ldSrc = instrs[i - 1];
 						Debug.Assert(ldDst.OpCode == OpCodes.Ldloc && ldSrc.OpCode == OpCodes.Ldloc);
-						instrs.RemoveAt(i);
-						instrs.RemoveAt(i - 1);
-						instrs.RemoveAt(i - 2);
+						instrs.RemoveRange(i - 2, 3);
 						instrs.InsertRange(i - 2, deriver.EmitDerivation(initMethod, context, (Local)ldDst.Operand, (Local)ldSrc.Operand));
 					}
 				}
