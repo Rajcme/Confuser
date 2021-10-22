@@ -84,7 +84,10 @@ namespace Confuser.Core.Helpers {
 		static void CopyTypeDef(TypeDef typeDef, InjectContext ctx) {
 			var newTypeDef = ctx.Map(typeDef)?.ResolveTypeDefThrow();
 			newTypeDef.BaseType = ctx.Importer.Import(typeDef.BaseType);
-
+			
+			foreach (var customAttribute in typeDef.CustomAttributes)
+				newTypeDef.CustomAttributes.Add(customAttribute);
+			
 			foreach (InterfaceImpl iface in typeDef.Interfaces)
 				newTypeDef.Interfaces.Add(new InterfaceImplUser(ctx.Importer.Import(iface.Interface)));
 		}
