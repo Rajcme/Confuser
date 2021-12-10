@@ -95,9 +95,9 @@ namespace Confuser.Renamer.Analyzers {
 		}
 
 		void Analyze(ConfuserContext context, INameService service, MethodDef method, ProtectionParameters parameters) {
-			if (GetJsonContainerAttribute(method.DeclaringType) != null && method.IsConstructor) {
+			//if (GetJsonContainerAttribute(method.DeclaringType) != null && method.IsConstructor) {
 				service.SetParam(method, "renameArgs", "false");
-			}
+			//}
 		}
 
 		void Analyze(ConfuserContext context, INameService service, PropertyDef property, ProtectionParameters parameters) {
