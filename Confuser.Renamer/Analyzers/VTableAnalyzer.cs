@@ -51,8 +51,7 @@ namespace Confuser.Renamer.Analyzers {
 						var existingReferences = service.GetReferences(slot.MethodDef);
 						var overrideDef = existingReferences
 							.OfType<MemberOverrideReference>()
-							.Where(r => !MethodEqualityComparer.CompareDeclaringTypes.Equals(r.BaseMemberDef as MethodDef, slot.Overrides.MethodDef))
-							.FirstOrDefault();
+							.FirstOrDefault(r => !MethodEqualityComparer.CompareDeclaringTypes.Equals(r.BaseMemberDef as MethodDef, slot.Overrides.MethodDef));
 
 						if (!(overrideDef is null)) {
 							var baseMemberDef = overrideDef.BaseMemberDef;
