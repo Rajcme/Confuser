@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text;
 using Confuser.Core;
+using Confuser.Renamer.References;
 using dnlib.DotNet;
 using dnlib.DotNet.Pdb;
 
@@ -132,6 +133,12 @@ namespace Confuser.Renamer {
 					errorBuilder.AppendLine("Remaining definitions: ");
 					foreach (var def in delayedItems) {
 						errorBuilder.Append("• ").AppendDescription(def, service).AppendLine();
+						service.SetCanRename(def, false);
+						foreach (var reference in service.GetReferences(def)) {
+							if (reference is MemberOverrideReference memberOverrideReference) {
+								service.SetCanRename(memberOverrideReference.BaseMemberDef, false);
+							}
+						}
 					}
 					context.Logger.Warn(errorBuilder.ToString().Trim());
 					yield break;
