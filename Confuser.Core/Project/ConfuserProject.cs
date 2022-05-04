@@ -700,7 +700,7 @@ namespace Confuser.Core.Project {
 
 		internal bool BatchLoadModules(XmlElement elem) {
 			string wildCardPath = elem.Attributes["path"].Value;
-			string[] files = Directory.GetFiles(BaseDirectory, wildCardPath, SearchOption.AllDirectories); // TODO: recursive
+			string[] files = Directory.GetFiles(BaseDirectory, wildCardPath, SearchOption.TopDirectoryOnly);
 			if (files.Length <= 0)
 			{
 				return false;
