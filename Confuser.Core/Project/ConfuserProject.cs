@@ -642,7 +642,7 @@ namespace Confuser.Core.Project {
 			OutputDirectory = docElem.Attributes["outputDir"].Value;
 			BaseDirectory = docElem.Attributes["baseDir"].Value;
 			if (!string.IsNullOrEmpty(baseDirRoot))
-            {
+			{
 				BaseDirectory = Path.Combine(baseDirRoot, BaseDirectory);
 			}
 
@@ -702,7 +702,7 @@ namespace Confuser.Core.Project {
 			string wildCardPath = elem.Attributes["path"].Value;
 			string[] files = Directory.GetFiles(BaseDirectory, wildCardPath, SearchOption.AllDirectories); // TODO: recursive
 			if (files.Length <= 0)
-            {
+			{
 				return false;
 			}
 
