@@ -98,8 +98,9 @@ namespace Confuser.Core {
 			ConfuserContext context, IList<Protection> protections,
 			IList<Packer> packers, IList<ConfuserComponent> components) {
 			protections.Add(new WatermarkingProtection());
+			var currentAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 			try {
-				Assembly protAsm = Assembly.Load("Confuser.Protections");
+				Assembly protAsm = Assembly.LoadFrom($"{currentAssemblyLocation}/Confuser.Protections.dll");
 				AddPlugins(context, protections, packers, components, protAsm);
 			}
 			catch (Exception ex) {
@@ -107,7 +108,7 @@ namespace Confuser.Core {
 			}
 
 			try {
-				Assembly renameAsm = Assembly.Load("Confuser.Renamer");
+				Assembly renameAsm = Assembly.LoadFrom($"{currentAssemblyLocation}/Confuser.Renamer.dll");
 				AddPlugins(context, protections, packers, components, renameAsm);
 			}
 			catch (Exception ex) {
@@ -115,7 +116,7 @@ namespace Confuser.Core {
 			}
 
 			try {
-				Assembly renameAsm = Assembly.Load("Confuser.DynCipher");
+				Assembly renameAsm = Assembly.LoadFrom($"{currentAssemblyLocation}/Confuser.DynCipher.dll");
 				AddPlugins(context, protections, packers, components, renameAsm);
 			}
 			catch (Exception ex) {
